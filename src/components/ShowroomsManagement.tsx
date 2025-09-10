@@ -1,10 +1,29 @@
 import React, { useState } from 'react';
-import { useData } from '../contexts/DataContext';
 import { Building2, Plus, Edit2, Trash2, Search, Phone, Mail, User } from 'lucide-react';
-import { Showroom } from '../types';
+
+interface Showroom {
+  id: string;
+  name: string;
+  location: string;
+  phone: string;
+  email: string;
+  manager: string;
+  createdAt: string;
+}
 
 const ShowroomsManagement: React.FC = () => {
-  const { showrooms, addShowroom, updateShowroom, deleteShowroom } = useData();
+  // Mock showrooms data since not implemented in backend
+  const [showrooms, setShowrooms] = useState<Showroom[]>([
+    {
+      id: '1',
+      name: 'Main Showroom',
+      location: '123 Main Street, City Center',
+      phone: '+1-234-567-8900',
+      email: 'main@workshop.com',
+      manager: 'John Doe',
+      createdAt: new Date().toISOString()
+    }
+  ]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingShowroom, setEditingShowroom] = useState<Showroom | null>(null);
@@ -21,6 +40,26 @@ const ShowroomsManagement: React.FC = () => {
     showroom.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
     showroom.manager.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Mock CRUD functions
+  const addShowroom = (data: typeof formData) => {
+    const newShowroom: Showroom = {
+      id: Date.now().toString(),
+      ...data,
+      createdAt: new Date().toISOString()
+    };
+    setShowrooms(prev => [...prev, newShowroom]);
+  };
+
+  const updateShowroom = (id: string, data: typeof formData) => {
+    setShowrooms(prev => prev.map(showroom => 
+      showroom.id === id ? { ...showroom, ...data } : showroom
+    ));
+  };
+
+  const deleteShowroom = (id: string) => {
+    setShowrooms(prev => prev.filter(showroom => showroom.id !== id));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

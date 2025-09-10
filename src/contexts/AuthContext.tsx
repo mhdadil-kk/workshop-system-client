@@ -23,18 +23,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const res = await authAPI.login(email, password);
       
-      if (res.data.success && res.data.data?.user) {
-        const apiUser = res.data.data.user;
+      if (res.data.success && res.data.data) {
+        const apiUser = res.data.data;
         console.log('[Auth] Login successful -> User:', apiUser);
         
         const u: User = {
-          id: apiUser._id || apiUser.id,
+          _id: apiUser._id,
+          id: apiUser._id, // For compatibility
           email: apiUser.email,
-          name: apiUser.name || '',
+          name: apiUser.name,
+          mobile: apiUser.mobile,
           role: apiUser.role,
-          showroomId: apiUser.showroomId,
-          phone: apiUser.phone || '',
+          isBlock: apiUser.isBlock || false,
           createdAt: apiUser.createdAt || new Date().toISOString(),
+          updatedAt: apiUser.updatedAt || new Date().toISOString(),
         };
         
         setUser(u);
@@ -56,7 +58,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem('workshop_user');
   };
 
-  // Initialize user from localStorage and verify with backend
+  // Initialize user from localStorage - server uses HTTP-only cookies for auth
   React.useEffect(() => {
     const initializeAuth = async () => {
       try {
@@ -65,15 +67,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const storedUser = JSON.parse(stored);
           setUser(storedUser);
           
-          // Verify token is still valid
-          try {
-            await authAPI.me();
-          } catch (error) {
-            // Token expired or invalid, clear stored user
-            console.log('[Auth] Token expired, clearing stored user');
-            setUser(null);
-            localStorage.removeItem('workshop_user');
-          }
+          // Note: Server uses HTTP-only cookies, so we rely on stored user data
+          // Token validation happens automatically via cookies on API calls
         }
       } catch (error) {
         console.error('[Auth] Error initializing auth:', error);

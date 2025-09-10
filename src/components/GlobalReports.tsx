@@ -1,61 +1,14 @@
 import React from 'react';
 import { useData } from '../contexts/DataContext';
-import { BarChart3, TrendingUp, DollarSign, Building2, Users, Wrench, Award } from 'lucide-react';
+import { BarChart3, TrendingUp, DollarSign, Building2, Wrench, Award } from 'lucide-react';
 
 const GlobalReports: React.FC = () => {
-  const { showrooms, services, vehicles } = useData();
+  const { orders } = useData();
 
-  // Calculate global statistics
-  const completedServices = services.filter(service => service.status === 'completed');
-  const totalRevenue = completedServices.reduce((sum, service) => sum + service.cost, 0);
-  const totalVehiclesServiced = new Set(completedServices.map(service => service.vehicleId)).size;
-
-  // Service type analysis
-  const serviceTypes = completedServices.reduce((acc, service) => {
-    acc[service.serviceType] = (acc[service.serviceType] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const topServices = Object.entries(serviceTypes)
-    .sort(([,a], [,b]) => b - a)
-    .slice(0, 5)
-    .map(([type, count]) => ({ type, count }));
-
-  // Revenue by service type
-  const revenueByServiceType = completedServices.reduce((acc, service) => {
-    acc[service.serviceType] = (acc[service.serviceType] || 0) + service.cost;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const topRevenueServices = Object.entries(revenueByServiceType)
-    .sort(([,a], [,b]) => b - a)
-    .slice(0, 5)
-    .map(([type, revenue]) => ({ type, revenue }));
-
-  // Showroom performance
-  const showroomPerformance = showrooms.map(showroom => {
-    const showroomServices = services.filter(service => service.showroomId === showroom.id);
-    const showroomCompletedServices = showroomServices.filter(service => service.status === 'completed');
-    const showroomRevenue = showroomCompletedServices.reduce((sum, service) => sum + service.cost, 0);
-    
-    return {
-      ...showroom,
-      totalServices: showroomServices.length,
-      completedServices: showroomCompletedServices.length,
-      revenue: showroomRevenue,
-      avgServiceValue: showroomCompletedServices.length > 0 ? showroomRevenue / showroomCompletedServices.length : 0
-    };
-  }).sort((a, b) => b.revenue - a.revenue);
-
-  // Monthly trend based on actual data
-  const monthlyData = [
-    { month: 'Jan', revenue: 15420, services: 42 },
-    { month: 'Feb', revenue: 18750, services: 51 },
-    { month: 'Mar', revenue: 22100, services: 63 },
-    { month: 'Apr', revenue: 19800, services: 55 },
-    { month: 'May', revenue: 26300, services: 71 },
-    { month: 'Jun', revenue: 28900, services: 78 }
-  ];
+  // Calculate statistics from actual backend data
+  const totalRevenue = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+  const totalVehiclesServiced = new Set(orders.map(order => order.vehicleId)).size;
+  const totalServices = orders.reduce((sum, order) => sum + (order.services?.length || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -93,7 +46,7 @@ const GlobalReports: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Services Completed</p>
-              <p className="text-2xl font-bold text-gray-900">{completedServices.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{totalServices}</p>
               <div className="flex items-center mt-2">
                 <TrendingUp className="h-4 w-4 text-blue-500 mr-1" />
                 <span className="text-sm font-medium text-blue-600">+12.8%</span>
@@ -125,10 +78,10 @@ const GlobalReports: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Active Showrooms</p>
-              <p className="text-2xl font-bold text-gray-900">{showrooms.length}</p>
+              <p className="text-2xl font-bold text-gray-900">1</p>
               <div className="flex items-center mt-2">
                 <TrendingUp className="h-4 w-4 text-emerald-500 mr-1" />
-                <span className="text-sm font-medium text-emerald-600">+2</span>
+                <span className="text-sm font-medium text-emerald-600">+0</span>
               </div>
             </div>
             <div className="p-3 rounded-xl bg-emerald-50">
@@ -138,123 +91,10 @@ const GlobalReports: React.FC = () => {
         </div>
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Services */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Top Services by Volume</h3>
-          <div className="space-y-4">
-            {topServices.map((service, index) => (
-              <div key={service.type} className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-bold text-blue-600">
-                    {index + 1}
-                  </div>
-                  <span className="font-medium text-gray-900">{service.type}</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="bg-gray-200 rounded-full h-2 w-20">
-                    <div 
-                      className="bg-blue-600 h-2 rounded-full" 
-                      style={{ width: `${(service.count / topServices[0].count) * 100}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-sm font-semibold text-gray-600 w-8">{service.count}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Top Revenue Services */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Top Revenue Services</h3>
-          <div className="space-y-4">
-            {topRevenueServices.map((service, index) => (
-              <div key={service.type} className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center text-sm font-bold text-emerald-600">
-                    {index + 1}
-                  </div>
-                  <span className="font-medium text-gray-900">{service.type}</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="bg-gray-200 rounded-full h-2 w-20">
-                    <div 
-                      className="bg-emerald-600 h-2 rounded-full" 
-                      style={{ width: `${(service.revenue / topRevenueServices[0].revenue) * 100}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-sm font-semibold text-gray-600">${service.revenue.toLocaleString()}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Monthly Trend */}
+      {/* Placeholder for future charts */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-4">Monthly Revenue & Service Trends</h3>
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
-          {monthlyData.map((month) => (
-            <div key={month.month} className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-sm text-gray-600 mb-2">{month.month}</div>
-              <div className="text-lg font-bold text-gray-900 mb-1">${month.revenue.toLocaleString()}</div>
-              <div className="text-sm text-gray-600">{month.services} services</div>
-              <div className="mt-2 bg-gray-200 rounded-full h-1">
-                <div 
-                  className="bg-blue-600 h-1 rounded-full" 
-                  style={{ width: `${(month.revenue / Math.max(...monthlyData.map(m => m.revenue))) * 100}%` }}
-                ></div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Showroom Performance */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-4">Showroom Performance Ranking</h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 text-sm font-medium text-gray-600">Rank</th>
-                <th className="text-left py-3 text-sm font-medium text-gray-600">Showroom</th>
-                <th className="text-right py-3 text-sm font-medium text-gray-600">Revenue</th>
-                <th className="text-right py-3 text-sm font-medium text-gray-600">Services</th>
-                <th className="text-right py-3 text-sm font-medium text-gray-600">Avg Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              {showroomPerformance.map((showroom, index) => (
-                <tr key={showroom.id} className="border-b border-gray-100">
-                  <td className="py-4">
-                    <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-sm font-bold text-blue-600">
-                      {index + 1}
-                    </div>
-                  </td>
-                  <td className="py-4">
-                    <div>
-                      <div className="font-medium text-gray-900">{showroom.name}</div>
-                      <div className="text-sm text-gray-500">{showroom.location.split(',')[0]}</div>
-                    </div>
-                  </td>
-                  <td className="py-4 text-right font-semibold text-gray-900">
-                    ${showroom.revenue.toLocaleString()}
-                  </td>
-                  <td className="py-4 text-right text-gray-600">
-                    {showroom.completedServices}
-                  </td>
-                  <td className="py-4 text-right text-gray-600">
-                    ${Math.round(showroom.avgServiceValue).toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <h3 className="text-lg font-bold text-gray-900 mb-4">Analytics Dashboard</h3>
+        <p className="text-gray-500">Detailed analytics and charts will be displayed here based on actual order data.</p>
       </div>
     </div>
   );

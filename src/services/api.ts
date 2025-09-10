@@ -26,17 +26,17 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => {
     console.log(`[API] Response ${response.status}:`, response.data);
-    return response;
+    return response;     
   },
   (error) => {
     console.error('[API] Response error:', error.response?.data || error.message);
     
-    // Handle token expiration
+    // Handle token expiration (server returns 406 for invalid tokens)
     if (error.response?.status === 406) {
       localStorage.removeItem('workshop_user');
       window.location.reload();
     }
-    
+                                 
     return Promise.reject(error);
   }
 );
@@ -48,24 +48,110 @@ export const authAPI = {
   
   logout: () =>
     api.post('/api/auth/logout'),
-  
-  me: () =>
-    api.get('/api/auth/me'),
 };
 
-// Admin API
-export const adminAPI = {
-  check: () =>
-    api.get('/api/admin/check'),
-  
-  addAdmin: (adminData: {
-    email: string;
+// Workshop API - Customers
+export const customerAPI = {
+  // Create customer
+  create: (customerData: {
+    uniqueCode: string;
     name: string;
-    password: string;
-    showroomId?: string;
-    phone?: string;
-  }) =>
-    api.post('/api/admin/admins', adminData),
+    email?: string;
+    mobile: string;
+    address?: string;
+  }) => api.post('/api/workshop/customers', customerData),
+  
+  // Update customer
+  update: (uniqueCode: string, customerData: Partial<{
+    name: string;
+    email?: string;
+    mobile: string;
+    address?: string;
+  }>) => api.put(`/api/workshop/customers/${uniqueCode}`, customerData),
+  
+  // Get all customers
+  getAll: () => api.get('/api/workshop/customers'),
+  
+  // Get customer by unique code
+  getByUniqueCode: (uniqueCode: string) => api.get(`/api/workshop/customers/${uniqueCode}`),
+  
+  // Search customers
+  search: (searchTerm: string) => api.get(`/api/workshop/customers/search?search=${encodeURIComponent(searchTerm)}`),
+};
+
+// Workshop API - Vehicles
+export const vehicleAPI = {
+  // Create vehicle
+  create: (vehicleData: {
+    vehicleNumber: string;
+    make: string;
+    vehicleModel: string;
+    year?: number;
+    color?: string;
+    engineNumber?: string;
+    chassisNumber?: string;
+  }) => api.post('/api/workshop/vehicles', vehicleData),
+  
+  // Update vehicle
+  update: (vehicleNumber: string, vehicleData: Partial<{
+    make: string;
+    vehicleModel: string;
+    year?: number;
+    color?: string;
+    engineNumber?: string;
+    chassisNumber?: string;
+  }>) => api.put(`/api/workshop/vehicles/${vehicleNumber}`, vehicleData),
+  
+  // Get all vehicles
+  getAll: () => api.get('/api/workshop/vehicles'),
+  
+  // Get vehicle by number
+  getByNumber: (vehicleNumber: string) => api.get(`/api/workshop/vehicles/${vehicleNumber}`),
+  
+  // Search vehicles
+  search: (searchTerm: string) => api.get(`/api/workshop/vehicles/search?search=${encodeURIComponent(searchTerm)}`),
+};
+
+// Workshop API - Orders (Services)
+export const orderAPI = {
+  // Create order
+  create: (orderData: {
+    orderNumber: string;
+    customerId: string;
+    vehicleId: string;
+    services: {
+      name: string;
+      description?: string;
+      amount: number;
+    }[];
+    totalAmount: number;
+    notes?: string;
+  }) => api.post('/api/workshop/orders', orderData),
+  
+  // Update order
+  update: (orderNumber: string, orderData: Partial<{
+    customerId: string;
+    vehicleId: string;
+    services: {
+      name: string;
+      description?: string;
+      amount: number;
+    }[];
+    totalAmount: number;
+    notes?: string;
+  }>) => api.put(`/api/workshop/orders/${orderNumber}`, orderData),
+  
+  // Get all orders
+  getAll: () => api.get('/api/workshop/orders'),
+  
+  // Get order by number
+  getByNumber: (orderNumber: string) => api.get(`/api/workshop/orders/${orderNumber}`),
+  
+  // Get orders by customer
+  getByCustomer: (customerId: string) => api.get(`/api/workshop/orders/customer/${customerId}`),
+  
+  // Get orders by vehicle
+  getByVehicle: (vehicleId: string) => api.get(`/api/workshop/orders/vehicle/${vehicleId}`),
 };
 
 export default api;

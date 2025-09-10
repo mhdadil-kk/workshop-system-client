@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { DataContextType, User, Showroom, Customer, Vehicle, Service } from '../types';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useMemo } from 'react';
+import { DataContextType, Customer, Vehicle, Order } from '../types';
+import { customerAPI, vehicleAPI, orderAPI } from '../services/api';
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
@@ -15,151 +16,280 @@ interface DataProviderProps {
   children: ReactNode;
 }
 
+// Helper function to transform server data to client format
+const transformServerData = (serverData: any): any => {
+  if (!serverData) return serverData;
+  
+  // Handle arrays
+  if (Array.isArray(serverData)) {
+    return serverData.map(transformServerData);
+  }
+  
+  // Handle objects with _id field - only add id if it doesn't exist
+  if (serverData._id && !serverData.id) {
+    return {
+      ...serverData,
+      id: serverData._id, // Add compatibility id field
+    };
+  }
+  
+  return serverData;
+};
+
 export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [showrooms, setShowrooms] = useState<Showroom[]>([]);
+  console.log('[DataContext] DataProvider render');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState({
+    customers: false,
+    vehicles: false,
+    orders: false,
+  });
 
-  const generateId = () => Math.random().toString(36).substr(2, 9);
+  const loadCustomers = useCallback(async () => {
+    console.log('[DataContext] Loading customers...');
+    setLoading(prev => ({ ...prev, customers: true }));
+    try {
+      const response = await customerAPI.getAll();
+      console.log('[DataContext] Customers response:', response.data);
+      if (response.data && response.data.success) {
+        const transformedData = transformServerData(response.data.data);
+        console.log('[DataContext] Setting customers:', transformedData);
+        setCustomers(transformedData);
+      }
+    } catch (error) {
+      console.error('Error loading customers:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, customers: false }));
+    }
+  }, []);
 
-  // User operations
-  const addUser = (userData: Omit<User, 'id' | 'createdAt'>) => {
-    const newUser: User = {
-      ...userData,
-      id: generateId(),
-      createdAt: new Date().toISOString(),
-    };
-    setUsers(prev => [...prev, newUser]);
-  };
+  const loadVehicles = useCallback(async () => {
+    setLoading(prev => ({ ...prev, vehicles: true }));
+    try {
+      const response = await vehicleAPI.getAll();
+      if (response.data && response.data.success) {
+        const transformedData = transformServerData(response.data.data);
+        setVehicles(transformedData);
+      }
+    } catch (error) {
+      console.error('Error loading vehicles:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, vehicles: false }));
+    }
+  }, []);
 
-  const updateUser = (id: string, userData: Partial<User>) => {
-    setUsers(prev => prev.map(user => 
-      user.id === id ? { ...user, ...userData } : user
-    ));
-  };
+  const loadOrders = useCallback(async () => {
+    setLoading(prev => ({ ...prev, orders: true }));
+    try {
+      const response = await orderAPI.getAll();
+      if (response.data && response.data.success) {
+        const transformedData = transformServerData(response.data.data);
+        setOrders(transformedData);
+      }
+    } catch (error) {
+      console.error('Error loading orders:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, orders: false }));
+    }
+  }, []);
 
-  const deleteUser = (id: string) => {
-    setUsers(prev => prev.filter(user => user.id !== id));
-  };
-
-  // Showroom operations
-  const addShowroom = (showroomData: Omit<Showroom, 'id' | 'createdAt'>) => {
-    const newShowroom: Showroom = {
-      ...showroomData,
-      id: generateId(),
-      createdAt: new Date().toISOString(),
-    };
-    setShowrooms(prev => [...prev, newShowroom]);
-  };
-
-  const updateShowroom = (id: string, showroomData: Partial<Showroom>) => {
-    setShowrooms(prev => prev.map(showroom => 
-      showroom.id === id ? { ...showroom, ...showroomData } : showroom
-    ));
-  };
-
-  const deleteShowroom = (id: string) => {
-    setShowrooms(prev => prev.filter(showroom => showroom.id !== id));
-    // Also remove related data
-    setUsers(prev => prev.filter(user => user.showroomId !== id));
-    setCustomers(prev => prev.filter(customer => customer.showroomId !== id));
-    setVehicles(prev => prev.filter(vehicle => vehicle.showroomId !== id));
-    setServices(prev => prev.filter(service => service.showroomId !== id));
-  };
+  // Remove automatic data loading - use lazy loading instead
+  // Data will be loaded when components actually need it
 
   // Customer operations
-  const addCustomer = (customerData: Omit<Customer, 'id' | 'createdAt'>) => {
-    const newCustomer: Customer = {
-      ...customerData,
-      id: generateId(),
-      createdAt: new Date().toISOString(),
-    };
-    setCustomers(prev => [...prev, newCustomer]);
-  };
+  const addCustomer = useCallback(async (customerData: Omit<Customer, '_id' | 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      const response = await customerAPI.create(customerData);
+      if (response.data && response.data.success) {
+        const transformedData = transformServerData(response.data.data);
+        setCustomers(prev => [...prev, transformedData]);
+        return transformedData;
+      }
+      throw new Error('Failed to create customer');
+    } catch (error) {
+      console.error('Error adding customer:', error);
+      throw error;
+    }
+  }, []);
 
-  const updateCustomer = (id: string, customerData: Partial<Customer>) => {
-    setCustomers(prev => prev.map(customer => 
-      customer.id === id ? { ...customer, ...customerData } : customer
-    ));
-  };
+  const updateCustomer = useCallback(async (uniqueCode: string, customerData: Partial<Customer>) => {
+    try {
+      const response = await customerAPI.update(uniqueCode, customerData);
+      if (response.data && response.data.success) {
+        const transformedData = transformServerData(response.data.data);
+        setCustomers(prev => prev.map(customer => 
+          customer.uniqueCode === uniqueCode ? transformedData : customer
+        ));
+      }
+    } catch (error) {
+      console.error('Error updating customer:', error);
+      throw error;
+    }
+  }, []);
 
-  const deleteCustomer = (id: string) => {
-    setCustomers(prev => prev.filter(customer => customer.id !== id));
-    // Also remove related vehicles and services
-    setVehicles(prev => prev.filter(vehicle => vehicle.customerId !== id));
-    setServices(prev => prev.filter(service => service.customerId !== id));
-  };
+  // Note: Delete operations not implemented in backend API
+
+  const searchCustomers = useCallback(async (searchTerm: string): Promise<Customer[]> => {
+    try {
+      const response = await customerAPI.search(searchTerm);
+      if (response.data && response.data.success) {
+        return transformServerData(response.data.data);
+      }
+      return [];
+    } catch (error) {
+      console.error('Error searching customers:', error);
+      return [];
+    }
+  }, []);
 
   // Vehicle operations
-  const addVehicle = (vehicleData: Omit<Vehicle, 'id' | 'createdAt'>) => {
-    const newVehicle: Vehicle = {
-      ...vehicleData,
-      id: generateId(),
-      createdAt: new Date().toISOString(),
-    };
-    setVehicles(prev => [...prev, newVehicle]);
-  };
+  const addVehicle = useCallback(async (vehicleData: Omit<Vehicle, '_id' | 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      const response = await vehicleAPI.create(vehicleData);
+      if (response.data && response.data.success) {
+        const transformedData = transformServerData(response.data.data);
+        setVehicles(prev => [...prev, transformedData]);
+        return transformedData;
+      }
+      throw new Error('Failed to create vehicle');
+    } catch (error) {
+      console.error('Error adding vehicle:', error);
+      throw error;
+    }
+  }, []);
 
-  const updateVehicle = (id: string, vehicleData: Partial<Vehicle>) => {
-    setVehicles(prev => prev.map(vehicle => 
-      vehicle.id === id ? { ...vehicle, ...vehicleData } : vehicle
-    ));
-  };
+  const updateVehicle = useCallback(async (vehicleNumber: string, vehicleData: Partial<Vehicle>) => {
+    try {
+      const response = await vehicleAPI.update(vehicleNumber, vehicleData);
+      if (response.data && response.data.success) {
+        const transformedData = transformServerData(response.data.data);
+        setVehicles(prev => prev.map(vehicle => 
+          vehicle.vehicleNumber === vehicleNumber ? transformedData : vehicle
+        ));
+      }
+    } catch (error) {
+      console.error('Error updating vehicle:', error);
+      throw error;
+    }
+  }, []);
 
-  const deleteVehicle = (id: string) => {
-    setVehicles(prev => prev.filter(vehicle => vehicle.id !== id));
-    // Also remove related services
-    setServices(prev => prev.filter(service => service.vehicleId !== id));
-  };
+  // Note: Delete operations not implemented in backend API
 
-  // Service operations
-  const addService = (serviceData: Omit<Service, 'id' | 'createdAt'>) => {
-    const newService: Service = {
-      ...serviceData,
-      id: generateId(),
-      createdAt: new Date().toISOString(),
-    };
-    setServices(prev => [...prev, newService]);
-  };
+  const searchVehicles = useCallback(async (searchTerm: string): Promise<Vehicle[]> => {
+    try {
+      const response = await vehicleAPI.search(searchTerm);
+      if (response.data && response.data.success) {
+        return transformServerData(response.data.data);
+      }
+      return [];
+    } catch (error) {
+      console.error('Error searching vehicles:', error);
+      return [];
+    }
+  }, []);
 
-  const updateService = (id: string, serviceData: Partial<Service>) => {
-    setServices(prev => prev.map(service => 
-      service.id === id ? { ...service, ...serviceData } : service
-    ));
-  };
+  // Order operations
+  const addOrder = useCallback(async (orderData: Omit<Order, '_id' | 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      const response = await orderAPI.create(orderData);
+      if (response.data && response.data.success) {
+        const transformedData = transformServerData(response.data.data);
+        setOrders(prev => [...prev, transformedData]);
+      }
+    } catch (error) {
+      console.error('Error adding order:', error);
+      throw error;
+    }
+  }, []);
 
-  const deleteService = (id: string) => {
-    setServices(prev => prev.filter(service => service.id !== id));
-  };
+  const updateOrder = useCallback(async (orderNumber: string, orderData: Partial<Order>) => {
+    try {
+      const response = await orderAPI.update(orderNumber, orderData);
+      if (response.data && response.data.success) {
+        const transformedData = transformServerData(response.data.data);
+        setOrders(prev => prev.map(order => 
+          order.orderNumber === orderNumber ? transformedData : order
+        ));
+      }
+    } catch (error) {
+      console.error('Error updating order:', error);
+      throw error;
+    }
+  }, []);
 
-  const value: DataContextType = {
-    users,
-    showrooms,
+  // Note: Delete operations not implemented in backend API
+
+  const getOrdersByCustomer = useCallback(async (customerId: string): Promise<Order[]> => {
+    try {
+      const response = await orderAPI.getByCustomer(customerId);
+      if (response.data && response.data.success) {
+        return transformServerData(response.data.data);
+      }
+      return [];
+    } catch (error) {
+      console.error('Error getting orders by customer:', error);
+      return [];
+    }
+  }, []);
+
+  const getOrdersByVehicle = useCallback(async (vehicleId: string): Promise<Order[]> => {
+    try {
+      const response = await orderAPI.getByVehicle(vehicleId);
+      if (response.data && response.data.success) {
+        return transformServerData(response.data.data);
+      }
+      return [];
+    } catch (error) {
+      console.error('Error getting orders by vehicle:', error);
+      return [];
+    }
+  }, []);
+
+  const refreshData = useCallback(async () => {
+    await Promise.all([loadCustomers(), loadVehicles(), loadOrders()]);
+  }, [loadCustomers, loadVehicles, loadOrders]);
+
+  const value: DataContextType = useMemo(() => ({
     customers,
     vehicles,
-    services,
-    addUser,
-    updateUser,
-    deleteUser,
-    addShowroom,
-    updateShowroom,
-    deleteShowroom,
+    orders,
+    loading,
+    loadCustomers,
+    loadVehicles,
+    loadOrders,
     addCustomer,
     updateCustomer,
-    deleteCustomer,
+    searchCustomers,
     addVehicle,
     updateVehicle,
-    deleteVehicle,
-    addService,
-    updateService,
-    deleteService,
-  };
+    searchVehicles,
+    addOrder,
+    updateOrder,
+    getOrdersByCustomer,
+    getOrdersByVehicle,
+    refreshData,
+  }), [
+    customers,
+    vehicles,
+    orders,
+    loading,
+    loadCustomers,
+    loadVehicles,
+    loadOrders,
+    addCustomer,
+    updateCustomer,
+    searchCustomers,
+    addVehicle,
+    updateVehicle,
+    searchVehicles,
+    addOrder,
+    updateOrder,
+    getOrdersByCustomer,
+    getOrdersByVehicle,
+    refreshData,
+  ]);
 
-  return (
-    <DataContext.Provider value={value}>
-      {children}
-    </DataContext.Provider>
-  );
+  return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 };

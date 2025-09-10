@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Wrench, Eye, EyeOff, ArrowRight, Sparkles, Shield } from 'lucide-react';
+import { Wrench, Eye, EyeOff, ArrowRight, Sparkles, Shield, AlertCircle } from 'lucide-react';
+import { validateEmail, validatePassword } from '../utils/validation';
 
 const Login: React.FC = () => {
   const { login } = useAuth();
@@ -9,22 +10,56 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setValidationErrors({});
+    
+    // Client-side validation
+    const emailError = validateEmail(email);
+    const passwordError = validatePassword(password);
+    
+    const newValidationErrors: {[key: string]: string} = {};
+    if (emailError) newValidationErrors[emailError.field] = emailError.message;
+    if (passwordError) newValidationErrors[passwordError.field] = passwordError.message;
+    
+    if (Object.keys(newValidationErrors).length > 0) {
+      setValidationErrors(newValidationErrors);
+      return;
+    }
+    
     setIsLoading(true);
-
     const success = await login(email, password);
     
     if (!success) {
-      setError('Invalid email or password');
+      setError('Invalid email or password. Please check your credentials and try again.');
     }
     
     setIsLoading(false);
   };
+  
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setEmail(value);
+    
+    // Clear validation error when user starts typing
+    if (validationErrors.email) {
+      setValidationErrors(prev => ({ ...prev, email: '' }));
+    }
+  };
+  
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPassword(value);
+    
+    // Clear validation error when user starts typing
+    if (validationErrors.password) {
+      setValidationErrors(prev => ({ ...prev, password: '' }));
+    }
+  };
 
-  // Demo accounts removed - using MongoDB Atlas Admins collection
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-blue-900 to-purple-900 flex items-center justify-center p-4 relative overflow-hidden">
@@ -88,11 +123,21 @@ const Login: React.FC = () => {
                 type="email"
                 id="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-gray-50 focus:bg-white hover:border-gray-400"
+                onChange={handleEmailChange}
+                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 transition-all duration-300 bg-gray-50 focus:bg-white hover:border-gray-400 ${
+                  validationErrors.email 
+                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                    : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                }`}
                 placeholder="Enter your email"
                 required
               />
+              {validationErrors.email && (
+                <div className="mt-2 flex items-center text-red-600 text-sm">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  <span>{validationErrors.email}</span>
+                </div>
+              )}
             </div>
 
             {/* Password Field */}
@@ -105,8 +150,12 @@ const Login: React.FC = () => {
                   type={showPassword ? 'text' : 'password'}
                   id="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-gray-50 focus:bg-white hover:border-gray-400"
+                  onChange={handlePasswordChange}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 transition-all duration-300 bg-gray-50 focus:bg-white hover:border-gray-400 ${
+                    validationErrors.password 
+                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                  }`}
                   placeholder="Enter your password"
                   required
                 />
@@ -118,6 +167,12 @@ const Login: React.FC = () => {
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
+              {validationErrors.password && (
+                <div className="mt-2 flex items-center text-red-600 text-sm">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  <span>{validationErrors.password}</span>
+                </div>
+              )}
             </div>
 
             {/* Error Message */}

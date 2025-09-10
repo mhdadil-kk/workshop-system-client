@@ -1,61 +1,64 @@
+// User model - matches server User model
 export interface User {
-  id: string;
+  _id: string;
+  id: string; // For compatibility
   email: string;
+  name: string;
+  mobile?: number;
   password?: string;
-  name: string;
-  role: 'super_admin' | 'admin';
-  showroomId?: string;
-  phone?: string;
+  role: 'staff' | 'admin';
+  isBlock: boolean;
   createdAt: string;
+  updatedAt: string;
 }
 
-export interface Showroom {
-  id: string;
-  name: string;
-  location: string;
-  phone: string;
-  email: string;
-  manager: string;
-  createdAt: string;
-}
-
+// Customer model - matches server Customer model
 export interface Customer {
-  id: string;
+  _id: string;
+  id: string; // For compatibility
+  uniqueCode: string;
   name: string;
-  email: string;
-  phone: string;
-  address: string;
-  showroomId: string;
+  email?: string;
+  mobile: string; // Server uses mobile instead of phone
+  address?: string;
   createdAt: string;
+  updatedAt: string;
 }
 
+// Vehicle model - matches server Vehicle model
 export interface Vehicle {
-  id: string;
+  _id: string;
+  id: string; // For compatibility
+  vehicleNumber: string;
   make: string;
-  model: string;
-  year: number;
-  vin: string;
-  licensePlate: string;
-  customerId: string;
-  showroomId: string;
-  mileage: number;
-  color: string;
+  vehicleModel: string; // Server uses vehicleModel instead of model
+  year?: number;
+  color?: string;
+  engineNumber?: string;
+  chassisNumber?: string;
   createdAt: string;
+  updatedAt: string;
 }
 
-export interface Service {
-  id: string;
-  vehicleId: string;
+// Service within Order - matches server IService
+export interface ServiceItem {
+  name: string;
+  description?: string;
+  amount: number;
+}
+
+// Order model - matches server Order model (replaces Service)
+export interface Order {
+  _id: string;
+  id: string; // For compatibility
+  orderNumber: string;
   customerId: string;
-  showroomId: string;
-  serviceType: string;
-  description: string;
-  cost: number;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  scheduledDate: string;
-  completedDate?: string;
-  technician: string;
+  vehicleId: string;
+  services: ServiceItem[];
+  totalAmount: number;
+  notes?: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface AuthContextType {
@@ -66,34 +69,39 @@ export interface AuthContextType {
 }
 
 export interface DataContextType {
-  users: User[];
-  showrooms: Showroom[];
   customers: Customer[];
   vehicles: Vehicle[];
-  services: Service[];
+  orders: Order[];
   
-  // User operations
-  addUser: (user: Omit<User, 'id' | 'createdAt'>) => void;
-  updateUser: (id: string, user: Partial<User>) => void;
-  deleteUser: (id: string) => void;
+  // Loading states
+  loading: {
+    customers: boolean;
+    vehicles: boolean;
+    orders: boolean;
+  };
   
-  // Showroom operations
-  addShowroom: (showroom: Omit<Showroom, 'id' | 'createdAt'>) => void;
-  updateShowroom: (id: string, showroom: Partial<Showroom>) => void;
-  deleteShowroom: (id: string) => void;
+  // Data loading functions
+  loadCustomers: () => Promise<void>;
+  loadVehicles: () => Promise<void>;
+  loadOrders: () => Promise<void>;
   
   // Customer operations
-  addCustomer: (customer: Omit<Customer, 'id' | 'createdAt'>) => void;
-  updateCustomer: (id: string, customer: Partial<Customer>) => void;
-  deleteCustomer: (id: string) => void;
+  addCustomer: (customer: Omit<Customer, '_id' | 'id' | 'createdAt' | 'updatedAt'>) => Promise<Customer>;
+  updateCustomer: (uniqueCode: string, customer: Partial<Customer>) => Promise<void>;
+  searchCustomers: (searchTerm: string) => Promise<Customer[]>;
   
   // Vehicle operations
-  addVehicle: (vehicle: Omit<Vehicle, 'id' | 'createdAt'>) => void;
-  updateVehicle: (id: string, vehicle: Partial<Vehicle>) => void;
-  deleteVehicle: (id: string) => void;
+  addVehicle: (vehicle: Omit<Vehicle, '_id' | 'id' | 'createdAt' | 'updatedAt'>) => Promise<Vehicle>;
+  updateVehicle: (vehicleNumber: string, vehicle: Partial<Vehicle>) => Promise<void>;
+  searchVehicles: (searchTerm: string) => Promise<Vehicle[]>;
   
-  // Service operations
-  addService: (service: Omit<Service, 'id' | 'createdAt'>) => void;
-  updateService: (id: string, service: Partial<Service>) => void;
-  deleteService: (id: string) => void;
+  // Order operations
+  addOrder: (order: Omit<Order, '_id' | 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateOrder: (orderNumber: string, order: Partial<Order>) => Promise<void>;
+  getOrdersByCustomer: (customerId: string) => Promise<Order[]>;
+  getOrdersByVehicle: (vehicleId: string) => Promise<Order[]>;
+  
+  
+  // Data refresh
+  refreshData: () => Promise<void>;
 }
