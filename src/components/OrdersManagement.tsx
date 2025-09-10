@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Eye, Calendar, User, Car, Wrench, Phone, Mail, MapPin, ChevronDown, ChevronRight, X, Save, AlertCircle } from 'lucide-react';
-import { Order, Customer, Vehicle } from '../types';
+import { Order } from '../types';
 import { useData } from '../contexts/DataContext';
 import { 
-  createOrderWithDataSchema, 
+  validateOrderWithData,
   type CreateOrderWithDataInput,
   type ServiceInput 
-} from '../schemas/validation';
+} from '../utils/validation';
 import Toast from './Toast';
 
 interface OrderCreationMode {
@@ -146,36 +146,35 @@ const OrdersManagement: React.FC = () => {
   const validateForm = (): boolean => {
     const errors: {[key: string]: string} = {};
 
-    try {
-      // Validate using Zod schema
-      const validationData: CreateOrderWithDataInput = {
-        customer: {
-          name: newOrderData.customer.name,
-          email: newOrderData.customer.email || undefined,
-          mobile: newOrderData.customer.mobile,
-          address: newOrderData.customer.address || undefined
-        },
-        vehicle: {
-          vehicleNumber: newOrderData.vehicle.vehicleNumber,
-          make: newOrderData.vehicle.make,
-          vehicleModel: newOrderData.vehicle.vehicleModel,
-          year: newOrderData.vehicle.year,
-          color: newOrderData.vehicle.color || undefined,
-          engineNumber: newOrderData.vehicle.engineNumber || undefined,
-          chassisNumber: newOrderData.vehicle.chassisNumber || undefined
-        },
-        services: newOrderData.services,
-        notes: newOrderData.notes || undefined
-      };
+    // Validate using native validation
+    const validationData: CreateOrderWithDataInput = {
+      customer: {
+        name: newOrderData.customer.name,
+        email: newOrderData.customer.email || '',
+        mobile: newOrderData.customer.mobile,
+        address: newOrderData.customer.address || ''
+      },
+      vehicle: {
+        vehicleNumber: newOrderData.vehicle.vehicleNumber,
+        make: newOrderData.vehicle.make,
+        vehicleModel: newOrderData.vehicle.vehicleModel,
+        year: newOrderData.vehicle.year || undefined,
+        color: newOrderData.vehicle.color || '',
+        engineNumber: newOrderData.vehicle.engineNumber || '',
+        chassisNumber: newOrderData.vehicle.chassisNumber || ''
+      },
+      services: newOrderData.services,
+      notes: newOrderData.notes || ''
+    };
 
-      createOrderWithDataSchema.parse(validationData);
-    } catch (error: any) {
-      if (error.errors) {
-        error.errors.forEach((err: any) => {
-          const path = err.path.join('.');
-          errors[path] = err.message;
-        });
-      }
+    const validationErrors = validateOrderWithData(validationData);
+    if (validationErrors.length > 0) {
+      const errorMap: {[key: string]: string} = {};
+      validationErrors.forEach(error => {
+        errorMap[error.field] = error.message;
+      });
+      setFormErrors(errorMap);
+      return false;
     }
 
     // Additional validation for existing customer/vehicle mode
@@ -775,7 +774,7 @@ const OrdersManagement: React.FC = () => {
                           name="orderMode"
                           value="new"
                           checked={orderMode.mode === 'new'}
-                          onChange={(e) => setOrderMode({ mode: 'new', selectedCustomerId: undefined, selectedVehicleId: undefined })}
+                          onChange={() => setOrderMode({ mode: 'new', selectedCustomerId: undefined, selectedVehicleId: undefined })}
                           className="mr-3 w-4 h-4 text-blue-600"
                         />
                         <div>
@@ -789,7 +788,7 @@ const OrdersManagement: React.FC = () => {
                           name="orderMode"
                           value="existing"
                           checked={orderMode.mode === 'existing'}
-                          onChange={(e) => setOrderMode({ mode: 'existing', selectedCustomerId: undefined, selectedVehicleId: undefined })}
+                          onChange={() => setOrderMode({ mode: 'existing', selectedCustomerId: undefined, selectedVehicleId: undefined })}
                           className="mr-3 w-4 h-4 text-blue-600"
                         />
                         <div>

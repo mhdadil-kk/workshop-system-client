@@ -145,39 +145,54 @@ const CustomersManagement: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Customers Management</h1>
-          <p className="text-gray-600 mt-1">Manage customers in your showroom</p>
+      <div className="card p-8 bg-gradient-to-r from-white to-gray-50/30">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+          <div className="flex items-center space-x-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center shadow-lg">
+              <UserCheck className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2">Customers Management</h1>
+              <p className="text-gray-600 text-lg">Manage and track all your customers and their service history</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="text-right">
+              <p className="text-sm text-gray-600 font-medium">Total Customers</p>
+              <p className="text-2xl font-bold text-blue-600">{customers.length}</p>
+            </div>
+            <button
+              onClick={() => setShowModal(true)}
+              className="btn btn-primary px-6 py-3 text-base font-semibold"
+            >
+              <Plus size={20} />
+              <span>Add Customer</span>
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors duration-200"
-        >
-          <Plus size={20} />
-          <span>Add Customer</span>
-        </button>
       </div>
 
       {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-        <input
-          type="text"
-          placeholder="Search customers by name, email, phone, or address..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        />
+      <div className="card p-6 bg-gradient-to-r from-white to-gray-50/30">
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+          <input
+            type="text"
+            placeholder="Search customers by name, email, phone, code, or address..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="input pl-12 pr-4 py-4 text-base bg-gray-50/50 border-gray-200 focus:bg-white focus:border-blue-400 focus:ring-blue-400/20"
+          />
+        </div>
       </div>
 
       {/* Loading State */}
       {loading.customers && (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-500">Loading customers...</p>
+        <div className="card p-12 text-center">
+          <div className="loading-spinner mx-auto mb-6"></div>
+          <p className="text-gray-500 text-lg font-medium">Loading customers...</p>
         </div>
       )}
 
@@ -190,134 +205,159 @@ const CustomersManagement: React.FC = () => {
           const orders = customerOrders[customer.id] || [];
           
           return (
-            <div key={customer.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div key={customer.id} className="card overflow-hidden hover:shadow-xl transition-all duration-300 animate-slide-in border-l-4 border-l-blue-500">
               {/* Customer Header */}
-              <div className="p-6">
+              <div className="p-8 bg-gradient-to-r from-white to-gray-50/30">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                      <UserCheck className="h-6 w-6 text-blue-600" />
+                  <div className="flex items-center space-x-6">
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center shadow-lg">
+                      <UserCheck className="h-8 w-8 text-white" />
                     </div>
                     <div className="flex-1">
-                      <div className="flex items-center space-x-3">
-                        <h3 className="text-lg font-bold text-gray-900">{customer.name}</h3>
-                        <span className="text-sm text-gray-500">#{customer.uniqueCode}</span>
+                      <div className="flex items-center space-x-4 mb-3">
+                        <h3 className="text-2xl font-bold text-gray-900">{customer.name}</h3>
+                        <span className="badge badge-primary text-sm font-mono">#{customer.uniqueCode}</span>
                       </div>
-                      <div className="flex items-center space-x-4 mt-1 text-sm text-gray-600">
-                        <div className="flex items-center space-x-1">
-                          <Phone className="h-4 w-4" />
-                          <span>{customer.mobile}</span>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-base">
+                        <div className="flex items-center space-x-2 text-gray-700">
+                          <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                            <Phone className="h-4 w-4 text-green-600" />
+                          </div>
+                          <span className="font-medium">{customer.mobile}</span>
                         </div>
-                        <div className="flex items-center space-x-1">
-                          <Mail className="h-4 w-4" />
-                          <span>{customer.email || 'N/A'}</span>
+                        <div className="flex items-center space-x-2 text-gray-700">
+                          <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <Mail className="h-4 w-4 text-purple-600" />
+                          </div>
+                          <span className="font-medium">{customer.email || 'N/A'}</span>
                         </div>
-                        <div className="flex items-center space-x-1">
-                          <Car className="h-4 w-4" />
-                          <span>{customerVehicles.length} vehicle{customerVehicles.length !== 1 ? 's' : ''}</span>
+                        <div className="flex items-center space-x-2 text-gray-700">
+                          <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                            <Car className="h-4 w-4 text-orange-600" />
+                          </div>
+                          <span className="font-medium">{customerVehicles.length} vehicle{customerVehicles.length !== 1 ? 's' : ''}</span>
                         </div>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-3">
                     <button
                       onClick={() => handleEdit(customer)}
-                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                      className="icon-btn icon-btn-primary p-3"
                       title="Edit Customer"
                     >
-                      <Edit2 size={16} />
+                      <Edit2 size={18} />
                     </button>
                     <button
                       onClick={() => handleDelete()}
-                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
+                      className="icon-btn p-3 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200"
                       title="Delete Customer"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={18} />
                     </button>
                     <button
                       onClick={() => toggleCustomerExpansion(customer.id)}
-                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
-                      title={isExpanded ? 'Collapse Orders' : 'View Orders'}
+                      className="icon-btn icon-btn-primary p-3"
+                      title={isExpanded ? 'Collapse Orders' : 'View Service History'}
                     >
-                      {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
                     </button>
                   </div>
                 </div>
                 
                 {customer.address && (
-                  <div className="mt-3 flex items-start space-x-2 text-sm text-gray-600">
-                    <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span>{customer.address}</span>
+                  <div className="mt-6 p-4 bg-gradient-to-r from-gray-50 to-gray-100/50 rounded-xl border border-gray-200/60">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <MapPin className="h-4 w-4 text-gray-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-1">Address</p>
+                        <p className="text-gray-900 font-medium leading-relaxed">{customer.address}</p>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
 
               {/* Expanded Orders Section */}
               {isExpanded && (
-                <div className="border-t border-gray-200 bg-gray-50">
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-lg font-semibold text-gray-900 flex items-center">
-                        <Wrench className="h-5 w-5 text-purple-600 mr-2" />
-                        Service Orders ({orders.length})
-                      </h4>
+                <div className="border-t border-gray-200/60 bg-gradient-to-r from-gray-50 to-gray-100/30">
+                  <div className="p-8">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl flex items-center justify-center shadow-lg">
+                          <Wrench className="h-5 w-5 text-white" />
+                        </div>
+                        <h4 className="text-xl font-bold text-gray-900">
+                          Service History ({orders.length} orders)
+                        </h4>
+                      </div>
                     </div>
                     
                     {orders.length > 0 ? (
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         {orders.map((order) => (
-                          <div key={order._id} className="bg-white rounded-lg border border-gray-200 p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center space-x-3">
-                                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                                  <Wrench className="h-4 w-4 text-purple-600" />
+                          <div key={order._id} className="card p-6 bg-gradient-to-r from-white to-gray-50/50 hover:shadow-md transition-all duration-200">
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center space-x-4">
+                                <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl flex items-center justify-center shadow-lg">
+                                  <Wrench className="h-6 w-6 text-white" />
                                 </div>
                                 <div>
-                                  <div className="font-medium text-gray-900">#{order.orderNumber}</div>
-                                  <div className="text-sm text-gray-500 flex items-center">
-                                    <Calendar className="h-3 w-3 mr-1" />
-                                    {new Date(order.createdAt).toLocaleDateString()}
+                                  <div className="font-bold text-gray-900 text-lg">#{order.orderNumber}</div>
+                                  <div className="text-gray-600 flex items-center font-medium">
+                                    <Calendar className="h-4 w-4 mr-2" />
+                                    {new Date(order.createdAt).toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric'
+                                    })}
                                   </div>
                                 </div>
                               </div>
-                              <div className="flex items-center space-x-3">
-                                <div className="text-right">
-                                  <div className="text-sm text-gray-600">{order.services.length} service{order.services.length !== 1 ? 's' : ''}</div>
-                                  <div className="font-semibold text-green-600 flex items-center">
-                                    <DollarSign className="h-4 w-4" />
-                                    {order.totalAmount.toFixed(2)}
-                                  </div>
+                              <div className="text-right">
+                                <div className="text-gray-600 font-medium mb-1">{order.services.length} service{order.services.length !== 1 ? 's' : ''}</div>
+                                <div className="badge badge-success text-lg font-bold">
+                                  <DollarSign className="h-4 w-4 mr-1" />
+                                  {order.totalAmount.toFixed(2)}
                                 </div>
                               </div>
                             </div>
                             
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                              <div>
-                                <span className="text-gray-600">Vehicle:</span>
-                                <span className="ml-2 text-gray-900">{getVehicleInfo(order.vehicleId)}</span>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div className="space-y-2">
+                                <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Vehicle</span>
+                                <p className="text-gray-900 font-semibold">{getVehicleInfo(order.vehicleId)}</p>
                               </div>
-                              <div>
-                                <span className="text-gray-600">Services:</span>
-                                <span className="ml-2 text-gray-900">
+                              <div className="space-y-2">
+                                <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Services</span>
+                                <p className="text-gray-900 font-semibold">
                                   {order.services.slice(0, 2).map(s => s.name).join(', ')}
-                                  {order.services.length > 2 && ` +${order.services.length - 2} more`}
-                                </span>
+                                  {order.services.length > 2 && (
+                                    <span className="text-purple-600 font-bold"> +{order.services.length - 2} more</span>
+                                  )}
+                                </p>
                               </div>
                             </div>
                             
                             {order.notes && (
-                              <div className="mt-3 p-2 bg-gray-50 rounded text-sm text-gray-700">
-                                <strong>Notes:</strong> {order.notes}
+                              <div className="mt-4 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl border border-amber-200/60">
+                                <p className="text-sm font-bold text-amber-700 uppercase tracking-wide mb-2">Notes</p>
+                                <p className="text-gray-700 leading-relaxed">{order.notes}</p>
                               </div>
                             )}
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-8">
-                        <Wrench className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                        <p className="text-gray-500">No service orders found for this customer</p>
+                      <div className="card p-12 text-center">
+                        <div className="w-20 h-20 bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                          <Wrench className="h-10 w-10 text-gray-400" />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-3">No Service History</h3>
+                        <p className="text-gray-500 text-lg leading-relaxed">This customer hasn't had any service orders yet. When they do, they'll appear here.</p>
                       </div>
                     )}
                   </div>
@@ -330,27 +370,48 @@ const CustomersManagement: React.FC = () => {
       )}
 
       {!loading.customers && filteredCustomers.length === 0 && (
-        <div className="text-center py-12">
-          <UserCheck className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No customers found</h3>
-          <p className="text-gray-500">
-            {searchTerm ? 'Try adjusting your search terms' : 'Get started by adding your first customer'}
+        <div className="card p-12 text-center">
+          <div className="w-20 h-20 bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <UserCheck className="h-10 w-10 text-gray-400" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 mb-3">No customers found</h3>
+          <p className="text-gray-500 text-lg mb-6 max-w-md mx-auto leading-relaxed">
+            {searchTerm ? 'Try adjusting your search terms or clear the search to see all customers.' : 'Ready to get started? Add your first customer to begin managing your client base.'}
           </p>
+          {!searchTerm && (
+            <button 
+              onClick={() => setShowModal(true)}
+              className="btn btn-primary px-6 py-3 text-base font-semibold"
+            >
+              <Plus size={20} />
+              <span>Add First Customer</span>
+            </button>
+          )}
         </div>
       )}
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
-              {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
-            </h2>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="card w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-in">
+            <div className="p-8 border-b border-gray-200/60 bg-gradient-to-r from-white to-gray-50/30">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center shadow-lg">
+                  <UserCheck className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
+                  </h2>
+                  <p className="text-gray-600">Enter customer information below</p>
+                </div>
+              </div>
+            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="p-8 space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Unique Code *
+                <label className="block text-base font-bold text-gray-700 mb-3 uppercase tracking-wide">
+                  Unique Code <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -360,12 +421,12 @@ const CustomersManagement: React.FC = () => {
                     setFormData({...formData, uniqueCode: e.target.value});
                     clearFieldError('uniqueCode');
                   }}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 ${
+                  className={`input py-3 text-base font-mono ${
                     validationErrors.uniqueCode 
-                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-                      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
-                  }`}
-                  placeholder="Enter unique customer code"
+                      ? 'border-red-300 focus:ring-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500'
+                  } ${!!editingCustomer ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                  placeholder="Enter unique customer code (e.g., CUST001)"
                   disabled={!!editingCustomer}
                 />
                 {validationErrors.uniqueCode && (
@@ -377,8 +438,8 @@ const CustomersManagement: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name *
+                <label className="block text-base font-bold text-gray-700 mb-3 uppercase tracking-wide">
+                  Full Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -388,10 +449,10 @@ const CustomersManagement: React.FC = () => {
                     setFormData({...formData, name: e.target.value});
                     clearFieldError('name');
                   }}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 ${
+                  className={`input py-3 text-base ${
                     validationErrors.name 
-                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-                      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                      ? 'border-red-300 focus:ring-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500'
                   }`}
                   placeholder="Enter customer's full name"
                 />
@@ -404,8 +465,8 @@ const CustomersManagement: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email Address *
+                <label className="block text-base font-bold text-gray-700 mb-3 uppercase tracking-wide">
+                  Email Address <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="email"
@@ -415,12 +476,12 @@ const CustomersManagement: React.FC = () => {
                     setFormData({...formData, email: e.target.value});
                     clearFieldError('email');
                   }}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 ${
+                  className={`input py-3 text-base ${
                     validationErrors.email 
-                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-                      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                      ? 'border-red-300 focus:ring-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500'
                   }`}
-                  placeholder="Enter email address"
+                  placeholder="customer@example.com"
                 />
                 {validationErrors.email && (
                   <div className="mt-1 flex items-center text-red-600 text-sm">
@@ -431,8 +492,8 @@ const CustomersManagement: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone Number *
+                <label className="block text-base font-bold text-gray-700 mb-3 uppercase tracking-wide">
+                  Phone Number <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
@@ -442,12 +503,12 @@ const CustomersManagement: React.FC = () => {
                     setFormData({...formData, mobile: e.target.value});
                     clearFieldError('mobile');
                   }}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 ${
+                  className={`input py-3 text-base font-mono ${
                     validationErrors.mobile 
-                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-                      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                      ? 'border-red-300 focus:ring-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500'
                   }`}
-                  placeholder="Enter phone number (e.g., +1234567890)"
+                  placeholder="+1 (555) 123-4567"
                 />
                 {validationErrors.mobile && (
                   <div className="mt-1 flex items-center text-red-600 text-sm">
@@ -458,8 +519,8 @@ const CustomersManagement: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Address *
+                <label className="block text-base font-bold text-gray-700 mb-3 uppercase tracking-wide">
+                  Address <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   required
@@ -468,13 +529,13 @@ const CustomersManagement: React.FC = () => {
                     setFormData({...formData, address: e.target.value});
                     clearFieldError('address');
                   }}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 ${
+                  className={`input py-3 text-base leading-relaxed ${
                     validationErrors.address 
-                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-                      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                      ? 'border-red-300 focus:ring-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500'
                   }`}
-                  placeholder="Enter complete address (street, city, state, zip)"
-                  rows={3}
+                  placeholder="Enter complete address including street, city, state, and zip code"
+                  rows={4}
                 />
                 {validationErrors.address && (
                   <div className="mt-1 flex items-center text-red-600 text-sm">
@@ -484,17 +545,17 @@ const CustomersManagement: React.FC = () => {
                 )}
               </div>
 
-              <div className="flex space-x-3 pt-4">
+              <div className="flex flex-col sm:flex-row gap-4 pt-6">
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors duration-200"
+                  className="btn btn-primary flex-1 py-3 px-6 text-base font-bold"
                 >
-                  {editingCustomer ? 'Update' : 'Add'} Customer
+                  {editingCustomer ? 'Update Customer' : 'Add Customer'}
                 </button>
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors duration-200"
+                  className="btn btn-secondary flex-1 py-3 px-6 text-base font-semibold"
                 >
                   Cancel
                 </button>

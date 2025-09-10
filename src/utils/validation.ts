@@ -1,5 +1,44 @@
 import React from 'react';
 
+// Type definitions to replace Zod types
+export interface ServiceInput {
+  name: string;
+  description?: string;
+  amount: number;
+}
+
+export interface CreateCustomerInput {
+  name: string;
+  email?: string;
+  mobile: string;
+  address?: string;
+  uniqueCode?: string;
+}
+
+export interface CreateVehicleInput {
+  vehicleNumber: string;
+  make: string;
+  vehicleModel: string;
+  year?: number;
+  color?: string;
+  engineNumber?: string;
+  chassisNumber?: string;
+}
+
+export interface CreateOrderInput {
+  customerId: string;
+  vehicleId: string;
+  services: ServiceInput[];
+  notes?: string;
+}
+
+export interface CreateOrderWithDataInput {
+  customer: CreateCustomerInput;
+  vehicle: CreateVehicleInput;
+  services: ServiceInput[];
+  notes?: string;
+}
+
 // Validation utility functions and types
 export interface ValidationError {
   field: string;
@@ -185,6 +224,65 @@ export const validateCost = (cost: number): ValidationError | null => {
   return null;
 };
 
+// Amount validation (for services)
+export const validateAmount = (amount: number, fieldName: string = 'amount'): ValidationError | null => {
+  if (amount < 0) {
+    return { field: fieldName, message: 'Amount must be positive' };
+  }
+  
+  return null;
+};
+
+// Service name validation
+export const validateServiceName = (name: string): ValidationError | null => {
+  if (!name.trim()) {
+    return { field: 'serviceName', message: 'Service name is required' };
+  }
+  
+  return null;
+};
+
+// Vehicle number validation
+export const validateVehicleNumber = (vehicleNumber: string): ValidationError | null => {
+  if (!vehicleNumber.trim()) {
+    return { field: 'vehicleNumber', message: 'Vehicle number is required' };
+  }
+  
+  return null;
+};
+
+// Make validation
+export const validateMake = (make: string): ValidationError | null => {
+  if (!make.trim()) {
+    return { field: 'make', message: 'Make is required' };
+  }
+  
+  return null;
+};
+
+// Model validation
+export const validateModel = (model: string): ValidationError | null => {
+  if (!model.trim()) {
+    return { field: 'vehicleModel', message: 'Model is required' };
+  }
+  
+  return null;
+};
+
+// Customer unique code validation
+export const validateUniqueCode = (code: string): ValidationError | null => {
+  if (!code.trim()) {
+    return { field: 'uniqueCode', message: 'Unique code is required' };
+  }
+  
+  return null;
+};
+
+// Mobile validation (alias for phone)
+export const validateMobile = (mobile: string): ValidationError | null => {
+  return validatePhone(mobile);
+};
+
 // Generic required field validation
 export const validateRequired = (value: string, fieldName: string): ValidationError | null => {
   if (!value || !value.trim()) {
@@ -238,4 +336,120 @@ export const useFormValidation = () => {
     getFieldError,
     hasFieldError
   };
+};
+
+// Validation functions for complex objects
+export const validateService = (service: { name: string; description?: string; amount: number }) => {
+  const errors: ValidationError[] = [];
+  
+  const nameError = validateServiceName(service.name);
+  if (nameError) errors.push(nameError);
+  
+  const amountError = validateAmount(service.amount);
+  if (amountError) errors.push(amountError);
+  
+  return errors;
+};
+
+export const validateCustomer = (customer: { name: string; email?: string; mobile: string; address?: string; uniqueCode?: string }) => {
+  const errors: ValidationError[] = [];
+  
+  const nameError = validateName(customer.name);
+  if (nameError) errors.push(nameError);
+  
+  if (customer.email && customer.email.trim()) {
+    const emailError = validateEmail(customer.email);
+    if (emailError) errors.push(emailError);
+  }
+  
+  const mobileError = validateMobile(customer.mobile);
+  if (mobileError) errors.push(mobileError);
+  
+  if (customer.address && customer.address.trim()) {
+    const addressError = validateAddress(customer.address);
+    if (addressError) errors.push(addressError);
+  }
+  
+  if (customer.uniqueCode) {
+    const codeError = validateUniqueCode(customer.uniqueCode);
+    if (codeError) errors.push(codeError);
+  }
+  
+  return errors;
+};
+
+export const validateVehicle = (vehicle: { vehicleNumber: string; make: string; vehicleModel: string; year?: number; color?: string; engineNumber?: string; chassisNumber?: string }) => {
+  const errors: ValidationError[] = [];
+  
+  const numberError = validateVehicleNumber(vehicle.vehicleNumber);
+  if (numberError) errors.push(numberError);
+  
+  const makeError = validateMake(vehicle.make);
+  if (makeError) errors.push(makeError);
+  
+  const modelError = validateModel(vehicle.vehicleModel);
+  if (modelError) errors.push(modelError);
+  
+  if (vehicle.year) {
+    const yearError = validateYear(vehicle.year);
+    if (yearError) errors.push(yearError);
+  }
+  
+  return errors;
+};
+
+export const validateOrder = (order: { customerId?: string; vehicleId?: string; services: any[]; notes?: string }) => {
+  const errors: ValidationError[] = [];
+  
+  if (order.customerId && !order.customerId.trim()) {
+    errors.push({ field: 'customerId', message: 'Customer ID is required' });
+  }
+  
+  if (order.vehicleId && !order.vehicleId.trim()) {
+    errors.push({ field: 'vehicleId', message: 'Vehicle ID is required' });
+  }
+  
+  if (!order.services || order.services.length === 0) {
+    errors.push({ field: 'services', message: 'At least one service is required' });
+  }
+  
+  // Validate each service
+  order.services.forEach((service, index) => {
+    const serviceErrors = validateService(service);
+    serviceErrors.forEach(error => {
+      errors.push({ ...error, field: `services[${index}].${error.field}` });
+    });
+  });
+  
+  return errors;
+};
+
+export const validateOrderWithData = (orderData: { customer: any; vehicle: any; services: any[]; notes?: string }) => {
+  const errors: ValidationError[] = [];
+  
+  // Validate customer
+  const customerErrors = validateCustomer(orderData.customer);
+  customerErrors.forEach(error => {
+    errors.push({ ...error, field: `customer.${error.field}` });
+  });
+  
+  // Validate vehicle
+  const vehicleErrors = validateVehicle(orderData.vehicle);
+  vehicleErrors.forEach(error => {
+    errors.push({ ...error, field: `vehicle.${error.field}` });
+  });
+  
+  // Validate services
+  if (!orderData.services || orderData.services.length === 0) {
+    errors.push({ field: 'services', message: 'At least one service is required' });
+  } else {
+    orderData.services.forEach((service, index) => {
+      const serviceErrors = validateService(service);
+      serviceErrors.forEach(error => {
+        errors.push({ ...error, field: `services[${index}].${error.field}` });
+      });
+    });
+  }
+  
+  return errors;
 };

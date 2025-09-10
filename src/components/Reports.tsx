@@ -2,53 +2,67 @@ import React from 'react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { BarChart3, TrendingUp, DollarSign, Wrench, Award } from 'lucide-react';
+import { Order } from '../types';
 
 const Reports: React.FC = () => {
-  const { user } = useAuth();
-  const { services, vehicles, customers, showrooms } = useData();
+  const { } = useAuth();
+  const { orders, vehicles, customers, loading } = useData();
 
-  // Filter data for current admin's showroom
-  const showroomServices = services.filter(s => s.showroomId === user?.showroomId);
-  const showroomVehicles = vehicles.filter(v => v.showroomId === user?.showroomId);
-  const showroomCustomers = customers.filter(c => c.showroomId === user?.showroomId);
-  const currentShowroom = showrooms.find(s => s.id === user?.showroomId);
+  // Add loading state and null checks
+  if (loading.orders || loading.vehicles || loading.customers || !orders || !vehicles || !customers) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
-  // Calculate statistics
-  const completedServices = showroomServices.filter(s => s.status === 'completed');
-  const pendingServices = showroomServices.filter(s => s.status === 'pending');
-  const inProgressServices = showroomServices.filter(s => s.status === 'in_progress');
-  const totalRevenue = completedServices.reduce((sum, service) => sum + service.cost, 0);
+  // Use orders data instead of services (orders contain services)
+  const showroomOrders = orders;
+  const showroomVehicles = vehicles;
+  const showroomCustomers = customers;
+  const currentShowroom = { name: 'Main Showroom' }; // Placeholder since showrooms don't exist in current data structure
 
-  // Service type analysis for this showroom
-  const serviceTypes = completedServices.reduce((acc, service) => {
-    acc[service.serviceType] = (acc[service.serviceType] || 0) + 1;
+  // Calculate statistics from orders (using mock status since Order type doesn't have status)
+  const completedOrders = showroomOrders; // All orders as completed for now
+  const pendingOrders: Order[] = []; // Empty for now
+  const inProgressOrders: Order[] = []; // Empty for now
+  const totalRevenue = completedOrders.reduce((sum: number, order: Order) => sum + (order.totalAmount || 0), 0);
+
+  // Service type analysis from orders
+  const serviceTypes = completedOrders.reduce((acc: Record<string, number>, order: Order) => {
+    order.services?.forEach((service: any) => {
+      acc[service.name] = (acc[service.name] || 0) + 1;
+    });
     return acc;
   }, {} as Record<string, number>);
 
   const topServices = Object.entries(serviceTypes)
-    .sort(([,a], [,b]) => b - a)
+    .sort(([,a], [,b]) => (b as number) - (a as number))
     .slice(0, 5)
     .map(([type, count]) => ({ type, count }));
 
-  // Revenue by service type
-  const revenueByServiceType = completedServices.reduce((acc, service) => {
-    acc[service.serviceType] = (acc[service.serviceType] || 0) + service.cost;
+  // Revenue by service type from orders
+  const revenueByServiceType = completedOrders.reduce((acc: Record<string, number>, order: Order) => {
+    order.services?.forEach((service: any) => {
+      acc[service.name] = (acc[service.name] || 0) + (service.amount || 0);
+    });
     return acc;
   }, {} as Record<string, number>);
 
   const topRevenueServices = Object.entries(revenueByServiceType)
-    .sort(([,a], [,b]) => b - a)
+    .sort(([,a], [,b]) => (b as number) - (a as number))
     .slice(0, 5)
     .map(([type, revenue]) => ({ type, revenue }));
 
-  // Monthly trend based on actual service data
+  // Monthly trend based on actual order data
   const monthlyData = [
-    { month: 'Jan', revenue: Math.floor(totalRevenue * 0.15), services: Math.floor(completedServices.length * 0.12) },
-    { month: 'Feb', revenue: Math.floor(totalRevenue * 0.18), services: Math.floor(completedServices.length * 0.16) },
-    { month: 'Mar', revenue: Math.floor(totalRevenue * 0.22), services: Math.floor(completedServices.length * 0.20) },
-    { month: 'Apr', revenue: Math.floor(totalRevenue * 0.19), services: Math.floor(completedServices.length * 0.18) },
-    { month: 'May', revenue: Math.floor(totalRevenue * 0.14), services: Math.floor(completedServices.length * 0.16) },
-    { month: 'Jun', revenue: Math.floor(totalRevenue * 0.12), services: Math.floor(completedServices.length * 0.18) }
+    { month: 'Jan', revenue: Math.floor(totalRevenue * 0.15), services: Math.floor(completedOrders.length * 0.12) },
+    { month: 'Feb', revenue: Math.floor(totalRevenue * 0.18), services: Math.floor(completedOrders.length * 0.16) },
+    { month: 'Mar', revenue: Math.floor(totalRevenue * 0.22), services: Math.floor(completedOrders.length * 0.20) },
+    { month: 'Apr', revenue: Math.floor(totalRevenue * 0.19), services: Math.floor(completedOrders.length * 0.18) },
+    { month: 'May', revenue: Math.floor(totalRevenue * 0.14), services: Math.floor(completedOrders.length * 0.16) },
+    { month: 'Jun', revenue: Math.floor(totalRevenue * 0.12), services: Math.floor(completedOrders.length * 0.18) }
   ];
 
   // Vehicle brand analysis
@@ -105,8 +119,8 @@ const Reports: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Services Completed</p>
-              <p className="text-2xl font-bold text-gray-900">{completedServices.length}</p>
+              <p className="text-sm font-medium text-gray-600">Orders Completed</p>
+              <p className="text-2xl font-bold text-gray-900">{completedOrders.length}</p>
               <div className="flex items-center mt-2">
                 <TrendingUp className="h-4 w-4 text-blue-500 mr-1" />
                 <span className="text-sm font-medium text-blue-600">+8.3%</span>
@@ -139,9 +153,9 @@ const Reports: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Avg Service Value</p>
+              <p className="text-sm font-medium text-gray-600">Avg Order Value</p>
               <p className="text-2xl font-bold text-gray-900">
-                ${completedServices.length > 0 ? Math.round(totalRevenue / completedServices.length) : 0}
+                ${completedOrders.length > 0 ? Math.round(totalRevenue / completedOrders.length) : 0}
               </p>
               <div className="flex items-center mt-2">
                 <TrendingUp className="h-4 w-4 text-emerald-500 mr-1" />
@@ -160,20 +174,20 @@ const Reports: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-900">Pending Services</h3>
-            <div className="text-2xl font-bold text-yellow-600">{pendingServices.length}</div>
+            <h3 className="text-lg font-bold text-gray-900">Pending Orders</h3>
+            <div className="text-2xl font-bold text-yellow-600">{pendingOrders.length}</div>
           </div>
           <div className="text-sm text-gray-600">
-            Services scheduled but not started
+            Orders scheduled but not started
           </div>
           <div className="mt-3 bg-yellow-50 rounded-lg p-3">
             <div className="text-xs text-yellow-700 font-medium">Next 7 Days</div>
             <div className="text-lg font-bold text-yellow-800">
-              {pendingServices.filter(s => {
-                const serviceDate = new Date(s.scheduledDate);
+              {pendingOrders.filter((order: Order) => {
+                const orderDate = new Date(order.createdAt || new Date());
                 const nextWeek = new Date();
                 nextWeek.setDate(nextWeek.getDate() + 7);
-                return serviceDate <= nextWeek;
+                return orderDate <= nextWeek;
               }).length}
             </div>
           </div>
@@ -182,15 +196,15 @@ const Reports: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-gray-900">In Progress</h3>
-            <div className="text-2xl font-bold text-blue-600">{inProgressServices.length}</div>
+            <div className="text-2xl font-bold text-blue-600">{inProgressOrders.length}</div>
           </div>
           <div className="text-sm text-gray-600">
-            Services currently being worked on
+            Orders currently being worked on
           </div>
           <div className="mt-3 bg-blue-50 rounded-lg p-3">
             <div className="text-xs text-blue-700 font-medium">Est. Revenue</div>
             <div className="text-lg font-bold text-blue-800">
-              ${inProgressServices.reduce((sum, s) => sum + s.cost, 0).toLocaleString()}
+              ${inProgressOrders.reduce((sum: number, order: Order) => sum + (order.totalAmount || 0), 0).toLocaleString()}
             </div>
           </div>
         </div>
@@ -198,10 +212,10 @@ const Reports: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-gray-900">Completed</h3>
-            <div className="text-2xl font-bold text-green-600">{completedServices.length}</div>
+            <div className="text-2xl font-bold text-green-600">{completedOrders.length}</div>
           </div>
           <div className="text-sm text-gray-600">
-            Services completed this period
+            Orders completed this period
           </div>
           <div className="mt-3 bg-green-50 rounded-lg p-3">
             <div className="text-xs text-green-700 font-medium">Revenue Generated</div>
@@ -242,7 +256,7 @@ const Reports: React.FC = () => {
           ) : (
             <div className="text-center py-8 text-gray-500">
               <Wrench className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p>No completed services yet</p>
+              <p>No completed orders yet</p>
             </div>
           )}
         </div>
@@ -264,10 +278,10 @@ const Reports: React.FC = () => {
                     <div className="bg-gray-200 rounded-full h-2 w-20">
                       <div 
                         className="bg-emerald-600 h-2 rounded-full" 
-                        style={{ width: `${(service.revenue / topRevenueServices[0].revenue) * 100}%` }}
+                        style={{ width: `${(service.revenue as number / topRevenueServices[0].revenue as number) * 100}%` }}
                       ></div>
                     </div>
-                    <span className="text-sm font-semibold text-gray-600">${service.revenue.toLocaleString()}</span>
+                    <span className="text-sm font-semibold text-gray-600">${(service.revenue as number).toLocaleString()}</span>
                   </div>
                 </div>
               ))}
@@ -344,14 +358,14 @@ const Reports: React.FC = () => {
               <span className="text-lg font-bold text-blue-900">{showroomVehicles.length}</span>
             </div>
             <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-lg">
-              <span className="text-sm font-medium text-emerald-800">Average Service Cost</span>
+              <span className="text-sm font-medium text-emerald-800">Average Order Cost</span>
               <span className="text-lg font-bold text-emerald-900">
-                ${completedServices.length > 0 ? Math.round(totalRevenue / completedServices.length) : 0}
+                ${completedOrders.length > 0 ? Math.round(totalRevenue / completedOrders.length) : 0}
               </span>
             </div>
             <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
-              <span className="text-sm font-medium text-purple-800">Services This Month</span>
-              <span className="text-lg font-bold text-purple-900">{showroomServices.length}</span>
+              <span className="text-sm font-medium text-purple-800">Orders This Month</span>
+              <span className="text-lg font-bold text-purple-900">{showroomOrders.length}</span>
             </div>
             <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
               <span className="text-sm font-medium text-yellow-800">Customer Satisfaction</span>
