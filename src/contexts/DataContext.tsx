@@ -99,7 +99,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   // Data will be loaded when components actually need it
 
   // Customer operations
-  const addCustomer = useCallback(async (customerData: Omit<Customer, '_id' | 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addCustomer = useCallback(async (customerData: Omit<Customer, '_id' | 'id' | 'uniqueCode' | 'createdAt' | 'updatedAt'>) => {
     try {
       const response = await customerAPI.create(customerData);
       if (response.data && response.data.success) {
@@ -191,7 +191,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   }, []);
 
   // Order operations
-  const addOrder = useCallback(async (orderData: Omit<Order, '_id' | 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addOrder = useCallback(async (orderData: Omit<Order, '_id' | 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>) => {
     try {
       const response = await orderAPI.create(orderData);
       if (response.data && response.data.success) {

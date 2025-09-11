@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../contexts/DataContext';
-import { UserCheck, Plus, Edit2, Trash2, Search, Phone, Mail, MapPin, Car, AlertCircle, ChevronDown, ChevronRight, Calendar, DollarSign, Wrench } from 'lucide-react';
+import { Users, Plus, Edit2, Search, User, Phone, Mail, MapPin, AlertCircle, ChevronDown, ChevronRight, Wrench, DollarSign, Calendar } from 'lucide-react';
 import { Customer, Order } from '../types';
-import { validateName, validateEmail, validatePhone, validateAddress } from '../utils/validation';
 
 const CustomersManagement: React.FC = () => {
   const { customers, vehicles, loading, loadCustomers, loadVehicles, loadOrders, addCustomer, updateCustomer, getOrdersByCustomer } = useData();
@@ -10,15 +9,14 @@ const CustomersManagement: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [formData, setFormData] = useState({
-    uniqueCode: '',
     name: '',
     email: '',
     mobile: '',
     address: ''
   });
-  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
+  const [error, setError] = useState<string>('');
   const [expandedCustomers, setExpandedCustomers] = useState<Set<string>>(new Set());
-  const [customerOrders, setCustomerOrders] = useState<{[key: string]: Order[]}>({});
+  const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
 
   // Load data when component mounts
   useEffect(() => {
@@ -35,31 +33,20 @@ const CustomersManagement: React.FC = () => {
     (customer.address && customer.address.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  const handleInputChange = (field: keyof typeof formData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Clear field error when user starts typing
+    if (fieldErrors[field]) {
+      setFieldErrors(prev => ({ ...prev, [field]: '' }));
+    }
+    setError('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setValidationErrors({});
-    
-    // Client-side validation
-    const nameError = validateName(formData.name, 'name');
-    const emailError = formData.email ? validateEmail(formData.email) : null;
-    const phoneError = validatePhone(formData.mobile);
-    const addressError = formData.address ? validateAddress(formData.address) : null;
-    
-    const newValidationErrors: {[key: string]: string} = {};
-    if (nameError) newValidationErrors[nameError.field] = nameError.message;
-    if (emailError) newValidationErrors[emailError.field] = emailError.message;
-    if (phoneError) newValidationErrors['mobile'] = phoneError.message;
-    if (addressError) newValidationErrors[addressError.field] = addressError.message;
-    
-    // Validate unique code
-    if (!formData.uniqueCode.trim()) {
-      newValidationErrors['uniqueCode'] = 'Unique code is required';
-    }
-    
-    if (Object.keys(newValidationErrors).length > 0) {
-      setValidationErrors(newValidationErrors);
-      return;
-    }
+    setError('');
+    setFieldErrors({});
     
     try {
       if (editingCustomer) {
@@ -67,36 +54,41 @@ const CustomersManagement: React.FC = () => {
       } else {
         await addCustomer(formData);
       }
-      resetForm();
-    } catch (error) {
+      setShowModal(false);
+    } catch (error: any) {
       console.error('Failed to save customer:', error);
-      // Handle error (show toast, etc.)
+      
+      // Handle backend validation errors
+      if (error.response?.status === 400 && error.response?.data?.errors) {
+        const backendErrors: {[key: string]: string} = {};
+        error.response.data.errors.forEach((err: {field: string, message: string}) => {
+          backendErrors[err.field] = err.message;
+        });
+        setFieldErrors(backendErrors);
+      } else {
+        const errorMessage = error.response?.data?.message || 'Failed to save customer. Please try again.';
+        setError(errorMessage);
+      }
     }
   };
 
   const resetForm = () => {
     setFormData({
-      uniqueCode: '',
       name: '',
       email: '',
       mobile: '',
       address: ''
     });
-    setValidationErrors({});
+    setError('');
+    setFieldErrors({});
     setEditingCustomer(null);
     setShowModal(false);
   };
   
-  const clearFieldError = (fieldName: string) => {
-    if (validationErrors[fieldName]) {
-      setValidationErrors(prev => ({ ...prev, [fieldName]: '' }));
-    }
-  };
 
   const handleEdit = (customer: Customer) => {
     setEditingCustomer(customer);
     setFormData({
-      uniqueCode: customer.uniqueCode,
       name: customer.name,
       email: customer.email || '',
       mobile: customer.mobile,
@@ -105,10 +97,6 @@ const CustomersManagement: React.FC = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async () => {
-    // Note: Delete functionality not implemented in backend API
-    alert('Delete functionality is not yet implemented in the backend API.');
-  };
 
   const getCustomerVehicles = (customerId: string) => {
     return vehicles.filter(v => v._id === customerId || v.id === customerId);
@@ -144,46 +132,42 @@ const CustomersManagement: React.FC = () => {
     return `${vehicle.year || ''} ${vehicle.make} ${vehicle.vehicleModel} (${vehicle.vehicleNumber})`.trim();
   };
 
+  const [customerOrders, setCustomerOrders] = useState<{[key: string]: Order[]}>({});
+
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Header */}
-      <div className="card p-8 bg-gradient-to-r from-white to-gray-50/30">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+      {/* Header - Medium */}
+      <div className="card p-6 bg-white border border-gray-200">
+        <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center shadow-lg">
-              <UserCheck className="h-8 w-8 text-white" />
+            <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
+              <Users className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2">Customers Management</h1>
-              <p className="text-gray-600 text-lg">Manage and track all your customers and their service history</p>
+              <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
+              <p className="text-sm text-gray-600">Total: {customers.length}</p>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="text-right">
-              <p className="text-sm text-gray-600 font-medium">Total Customers</p>
-              <p className="text-2xl font-bold text-blue-600">{customers.length}</p>
-            </div>
-            <button
-              onClick={() => setShowModal(true)}
-              className="btn btn-primary px-6 py-3 text-base font-semibold"
-            >
-              <Plus size={20} />
-              <span>Add Customer</span>
-            </button>
-          </div>
+          <button
+            onClick={() => setShowModal(true)}
+            className="btn btn-primary px-4 py-3 text-base"
+          >
+            <Plus size={18} />
+            <span>Add Customer</span>
+          </button>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="card p-6 bg-gradient-to-r from-white to-gray-50/30">
+      {/* Search - Medium */}
+      <div className="card p-4 bg-white border border-gray-200">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           <input
             type="text"
-            placeholder="Search customers by name, email, phone, code, or address..."
+            placeholder="Search customers by name, mobile, email, or address..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="input pl-12 pr-4 py-4 text-base bg-gray-50/50 border-gray-200 focus:bg-white focus:border-blue-400 focus:ring-blue-400/20"
+            className="input pl-12 pr-4 py-3 text-base bg-gray-50 border-gray-200 focus:bg-white focus:border-blue-400"
           />
         </div>
       </div>
@@ -200,85 +184,57 @@ const CustomersManagement: React.FC = () => {
       {!loading.customers && (
         <div className="space-y-4">
         {filteredCustomers.map((customer) => {
-          const customerVehicles = getCustomerVehicles(customer.id);
-          const isExpanded = expandedCustomers.has(customer.id);
-          const orders = customerOrders[customer.id] || [];
+          const isExpanded = expandedCustomers.has(customer._id);
+          const orders = customerOrders[customer._id] || [];
           
           return (
-            <div key={customer.id} className="card overflow-hidden hover:shadow-xl transition-all duration-300 animate-slide-in border-l-4 border-l-blue-500">
-              {/* Customer Header */}
-              <div className="p-8 bg-gradient-to-r from-white to-gray-50/30">
+            <div key={customer._id} className="card overflow-hidden hover:shadow-lg transition-all duration-200 border border-gray-200">
+              {/* Customer Header - Medium */}
+              <div className="p-5 bg-white">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-6">
-                    <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center shadow-lg">
-                      <UserCheck className="h-8 w-8 text-white" />
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                      <User className="h-5 w-5 text-white" />
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-4 mb-3">
-                        <h3 className="text-2xl font-bold text-gray-900">{customer.name}</h3>
-                        <span className="badge badge-primary text-sm font-mono">#{customer.uniqueCode}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <h3 className="text-lg font-bold text-gray-900 truncate">{customer.name}</h3>
+                        <span className="badge badge-primary text-sm px-2 py-1">{customer.uniqueCode}</span>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-base">
-                        <div className="flex items-center space-x-2 text-gray-700">
-                          <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                            <Phone className="h-4 w-4 text-green-600" />
-                          </div>
-                          <span className="font-medium">{customer.mobile}</span>
+                      <div className="flex items-center space-x-6 text-sm text-gray-600">
+                        <div className="flex items-center space-x-2">
+                          <Phone className="h-4 w-4" />
+                          <span>{customer.mobile}</span>
                         </div>
-                        <div className="flex items-center space-x-2 text-gray-700">
-                          <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                            <Mail className="h-4 w-4 text-purple-600" />
-                          </div>
-                          <span className="font-medium">{customer.email || 'N/A'}</span>
+                        <div className="flex items-center space-x-2">
+                          <Mail className="h-4 w-4" />
+                          <span className="truncate">{customer.email || 'No email'}</span>
                         </div>
-                        <div className="flex items-center space-x-2 text-gray-700">
-                          <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-                            <Car className="h-4 w-4 text-orange-600" />
-                          </div>
-                          <span className="font-medium">{customerVehicles.length} vehicle{customerVehicles.length !== 1 ? 's' : ''}</span>
+                        <div className="flex items-center space-x-2">
+                          <MapPin className="h-4 w-4" />
+                          <span className="truncate">{customer.address || 'No address'}</span>
                         </div>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-2">
                     <button
                       onClick={() => handleEdit(customer)}
-                      className="icon-btn icon-btn-primary p-3"
+                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       title="Edit Customer"
                     >
-                      <Edit2 size={18} />
+                      <Edit2 size={16} />
                     </button>
                     <button
-                      onClick={() => handleDelete()}
-                      className="icon-btn p-3 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200"
-                      title="Delete Customer"
+                      onClick={() => toggleCustomerExpansion(customer._id)}
+                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title={isExpanded ? 'Collapse Orders' : 'View Orders'}
                     >
-                      <Trash2 size={18} />
-                    </button>
-                    <button
-                      onClick={() => toggleCustomerExpansion(customer.id)}
-                      className="icon-btn icon-btn-primary p-3"
-                      title={isExpanded ? 'Collapse Orders' : 'View Service History'}
-                    >
-                      {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                      {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     </button>
                   </div>
                 </div>
-                
-                {customer.address && (
-                  <div className="mt-6 p-4 bg-gradient-to-r from-gray-50 to-gray-100/50 rounded-xl border border-gray-200/60">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <MapPin className="h-4 w-4 text-gray-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-1">Address</p>
-                        <p className="text-gray-900 font-medium leading-relaxed">{customer.address}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Expanded Orders Section */}
@@ -372,7 +328,7 @@ const CustomersManagement: React.FC = () => {
       {!loading.customers && filteredCustomers.length === 0 && (
         <div className="card p-12 text-center">
           <div className="w-20 h-20 bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <UserCheck className="h-10 w-10 text-gray-400" />
+            <Users className="h-10 w-10 text-gray-400" />
           </div>
           <h3 className="text-xl font-bold text-gray-900 mb-3">No customers found</h3>
           <p className="text-gray-500 text-lg mb-6 max-w-md mx-auto leading-relaxed">
@@ -397,7 +353,7 @@ const CustomersManagement: React.FC = () => {
             <div className="p-8 border-b border-gray-200/60 bg-gradient-to-r from-white to-gray-50/30">
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center shadow-lg">
-                  <UserCheck className="h-6 w-6 text-white" />
+                  <Users className="h-6 w-6 text-white" />
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900">
@@ -409,33 +365,14 @@ const CustomersManagement: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="p-8 space-y-6">
-              <div>
-                <label className="block text-base font-bold text-gray-700 mb-3 uppercase tracking-wide">
-                  Unique Code <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.uniqueCode}
-                  onChange={(e) => {
-                    setFormData({...formData, uniqueCode: e.target.value});
-                    clearFieldError('uniqueCode');
-                  }}
-                  className={`input py-3 text-base font-mono ${
-                    validationErrors.uniqueCode 
-                      ? 'border-red-300 focus:ring-red-500' 
-                      : 'border-gray-300 focus:ring-blue-500'
-                  } ${!!editingCustomer ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                  placeholder="Enter unique customer code (e.g., CUST001)"
-                  disabled={!!editingCustomer}
-                />
-                {validationErrors.uniqueCode && (
-                  <div className="mt-1 flex items-center text-red-600 text-sm">
-                    <AlertCircle className="h-4 w-4 mr-1" />
-                    <span>{validationErrors.uniqueCode}</span>
+              {error && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center text-red-600">
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    <span className="text-sm font-medium">{error}</span>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-base font-bold text-gray-700 mb-3 uppercase tracking-wide">
@@ -445,48 +382,33 @@ const CustomersManagement: React.FC = () => {
                   type="text"
                   required
                   value={formData.name}
-                  onChange={(e) => {
-                    setFormData({...formData, name: e.target.value});
-                    clearFieldError('name');
-                  }}
-                  className={`input py-3 text-base ${
-                    validationErrors.name 
-                      ? 'border-red-300 focus:ring-red-500' 
-                      : 'border-gray-300 focus:ring-blue-500'
-                  }`}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  className="input py-3 text-base border-gray-300 focus:ring-blue-500"
                   placeholder="Enter customer's full name"
                 />
-                {validationErrors.name && (
+                {fieldErrors.name && (
                   <div className="mt-1 flex items-center text-red-600 text-sm">
                     <AlertCircle className="h-4 w-4 mr-1" />
-                    <span>{validationErrors.name}</span>
+                    <span>{fieldErrors.name}</span>
                   </div>
                 )}
               </div>
 
               <div>
                 <label className="block text-base font-bold text-gray-700 mb-3 uppercase tracking-wide">
-                  Email Address <span className="text-red-500">*</span>
+                  Email Address
                 </label>
                 <input
                   type="email"
-                  required
                   value={formData.email}
-                  onChange={(e) => {
-                    setFormData({...formData, email: e.target.value});
-                    clearFieldError('email');
-                  }}
-                  className={`input py-3 text-base ${
-                    validationErrors.email 
-                      ? 'border-red-300 focus:ring-red-500' 
-                      : 'border-gray-300 focus:ring-blue-500'
-                  }`}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  className="input py-3 text-base border-gray-300 focus:ring-blue-500"
                   placeholder="customer@example.com"
                 />
-                {validationErrors.email && (
+                {fieldErrors.email && (
                   <div className="mt-1 flex items-center text-red-600 text-sm">
                     <AlertCircle className="h-4 w-4 mr-1" />
-                    <span>{validationErrors.email}</span>
+                    <span>{fieldErrors.email}</span>
                   </div>
                 )}
               </div>
@@ -499,48 +421,41 @@ const CustomersManagement: React.FC = () => {
                   type="tel"
                   required
                   value={formData.mobile}
-                  onChange={(e) => {
-                    setFormData({...formData, mobile: e.target.value});
-                    clearFieldError('mobile');
-                  }}
+                  onChange={(e) => handleInputChange('mobile', e.target.value)}
                   className={`input py-3 text-base font-mono ${
-                    validationErrors.mobile 
+                    fieldErrors.mobile 
                       ? 'border-red-300 focus:ring-red-500' 
                       : 'border-gray-300 focus:ring-blue-500'
                   }`}
                   placeholder="+1 (555) 123-4567"
                 />
-                {validationErrors.mobile && (
+                {fieldErrors.mobile && (
                   <div className="mt-1 flex items-center text-red-600 text-sm">
                     <AlertCircle className="h-4 w-4 mr-1" />
-                    <span>{validationErrors.mobile}</span>
+                    <span>{fieldErrors.mobile}</span>
                   </div>
                 )}
               </div>
 
               <div>
                 <label className="block text-base font-bold text-gray-700 mb-3 uppercase tracking-wide">
-                  Address <span className="text-red-500">*</span>
+                  Address
                 </label>
                 <textarea
-                  required
                   value={formData.address}
-                  onChange={(e) => {
-                    setFormData({...formData, address: e.target.value});
-                    clearFieldError('address');
-                  }}
+                  onChange={(e) => handleInputChange('address', e.target.value)}
                   className={`input py-3 text-base leading-relaxed ${
-                    validationErrors.address 
+                    fieldErrors.address 
                       ? 'border-red-300 focus:ring-red-500' 
                       : 'border-gray-300 focus:ring-blue-500'
                   }`}
                   placeholder="Enter complete address including street, city, state, and zip code"
                   rows={4}
                 />
-                {validationErrors.address && (
+                {fieldErrors.address && (
                   <div className="mt-1 flex items-center text-red-600 text-sm">
                     <AlertCircle className="h-4 w-4 mr-1" />
-                    <span>{validationErrors.address}</span>
+                    <span>{fieldErrors.address}</span>
                   </div>
                 )}
               </div>

@@ -7,9 +7,13 @@ import Reports from './Reports';
 
 interface MainContentProps {
   activeTab: string;
+  navigate?: (tabId: string, params?: any) => void;
+  routeParams?: any;
 }
 
-const MainContent: React.FC<MainContentProps> = ({ activeTab }) => {
+const MainContent: React.FC<MainContentProps> = ({ activeTab, navigate, routeParams }) => {
+  // Lazy import to avoid circular deps in edits
+  const OrderDetails = React.useMemo(() => React.lazy(() => import('./OrderDetails')), []);
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -19,7 +23,13 @@ const MainContent: React.FC<MainContentProps> = ({ activeTab }) => {
       case 'vehicles':
         return <VehiclesManagement />;
       case 'orders':
-        return <OrdersManagement />;
+        return <OrdersManagement navigate={navigate} />;
+      case 'orderDetails':
+        return (
+          <React.Suspense fallback={<div className="p-6">Loading...</div>}>
+            <OrderDetails navigate={navigate} params={routeParams} />
+          </React.Suspense>
+        );
       case 'reports':
         return <Reports />;
       default:

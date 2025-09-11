@@ -27,6 +27,7 @@ interface NavItem {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [routeParams, setRouteParams] = useState<any | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
@@ -69,6 +70,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
+    setRouteParams(null);
+    setSidebarOpen(false);
+  };
+
+  const navigate = (tabId: string, params?: any) => {
+    setActiveTab(tabId);
+    setRouteParams(params || null);
     setSidebarOpen(false);
   };
 
@@ -203,7 +211,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {/* Content */}
         <main className="flex-1 overflow-x-hidden overflow-y-auto p-6 bg-gradient-to-br from-slate-50/50 via-blue-50/20 to-indigo-50/10">
           <div className="animate-fade-in">
-            {React.cloneElement(children as React.ReactElement, { activeTab })}
+            {React.cloneElement(children as React.ReactElement, { activeTab, navigate, routeParams })}
           </div>
         </main>
       </div>

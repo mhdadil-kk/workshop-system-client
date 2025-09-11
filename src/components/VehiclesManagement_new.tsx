@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../contexts/DataContext';
-import { Car, Plus, Edit2, Search, User, Calendar, AlertCircle, ChevronDown, ChevronRight, Wrench } from 'lucide-react';
+import { Car, Plus, Edit2, Search, User, Calendar, AlertCircle, ChevronDown, ChevronRight, Wrench, DollarSign } from 'lucide-react';
 import { Vehicle, Order } from '../types';
 
 const VehiclesManagement: React.FC = () => {
@@ -57,23 +57,13 @@ const VehiclesManagement: React.FC = () => {
     setError('');
     setFieldErrors({});
     
-    // Prepare data for server2 - only send required fields
-    const vehicleData = {
-      vehicleNumber: formData.vehicleNumber,
-      make: formData.make,
-      vehicleModel: formData.vehicleModel,
-      ...(formData.year && { year: formData.year }),
-      ...(formData.color && { color: formData.color }),
-      ...(formData.engineNumber && { engineNumber: formData.engineNumber }),
-      ...(formData.chassisNumber && { chassisNumber: formData.chassisNumber })
-    };
-    
     try {
       if (editingVehicle) {
-        await updateVehicle(editingVehicle.vehicleNumber, vehicleData);
+        await updateVehicle(editingVehicle.vehicleNumber, formData);
       } else {
-        await addVehicle(vehicleData);
+        await addVehicle(formData);
       }
+      setShowModal(false);
       resetForm();
     } catch (error: any) {
       console.error('Failed to save vehicle:', error);
@@ -155,38 +145,38 @@ const VehiclesManagement: React.FC = () => {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      {/* Header - Medium */}
-      <div className="card p-6 bg-white border border-gray-200">
+      {/* Header - Compact */}
+      <div className="card p-4 bg-white border border-gray-200">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center">
-              <Car className="h-6 w-6 text-white" />
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+              <Car className="h-4 w-4 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Vehicles</h1>
-              <p className="text-sm text-gray-600">Total: {vehicles.length}</p>
+              <h1 className="text-lg font-semibold text-gray-900">Vehicles</h1>
+              <p className="text-xs text-gray-500">Total: {vehicles.length}</p>
             </div>
           </div>
           <button
             onClick={() => setShowModal(true)}
-            className="btn btn-primary px-4 py-3 text-base"
+            className="btn btn-primary px-3 py-2 text-sm"
           >
-            <Plus size={18} />
-            <span>Add Vehicle</span>
+            <Plus size={14} />
+            <span>Add</span>
           </button>
         </div>
       </div>
 
-      {/* Search - Medium */}
-      <div className="card p-4 bg-white border border-gray-200">
+      {/* Search - Compact */}
+      <div className="card p-3 bg-white border border-gray-200">
         <div className="relative">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
           <input
             type="text"
-            placeholder="Search vehicles by make, model, number, engine, chassis, or customer..."
+            placeholder="Search vehicles..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="input pl-12 pr-4 py-3 text-base bg-gray-50 border-gray-200 focus:bg-white focus:border-purple-400"
+            className="input pl-9 pr-3 py-2 text-sm bg-gray-50 border-gray-200 focus:bg-white focus:border-purple-400"
           />
         </div>
       </div>
@@ -201,37 +191,37 @@ const VehiclesManagement: React.FC = () => {
 
       {/* Vehicles List */}
       {!loading.vehicles && (
-        <div className="space-y-4">
+        <div className="space-y-2">
         {filteredVehicles.map((vehicle) => {
           const isExpanded = expandedVehicles.has(vehicle._id);
           const orders = vehicleOrders[vehicle._id] || [];
           
           return (
-            <div key={vehicle._id} className="card overflow-hidden hover:shadow-lg transition-all duration-200 border border-gray-200">
-              {/* Vehicle Header - Medium */}
-              <div className="p-5 bg-white">
+            <div key={vehicle._id} className="card overflow-hidden hover:shadow-md transition-all duration-200 border border-gray-200">
+              {/* Vehicle Header - Ultra Compact */}
+              <div className="p-3 bg-white">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
-                      <Car className="h-5 w-5 text-white" />
+                  <div className="flex items-center space-x-3">
+                    <div className="w-6 h-6 bg-purple-600 rounded flex items-center justify-center">
+                      <Car className="h-3 w-3 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-lg font-bold text-gray-900 truncate">{vehicle.make} {vehicle.vehicleModel}</h3>
-                        <span className="badge badge-primary text-sm font-mono px-2 py-1">{vehicle.vehicleNumber}</span>
+                      <div className="flex items-center space-x-2 mb-1">
+                        <h3 className="text-sm font-semibold text-gray-900 truncate">{vehicle.make} {vehicle.vehicleModel}</h3>
+                        <span className="badge badge-primary text-xs font-mono px-1 py-0.5">{vehicle.vehicleNumber}</span>
                       </div>
-                      <div className="flex items-center space-x-6 text-sm text-gray-600">
-                        <div className="flex items-center space-x-2">
-                          <Calendar className="h-4 w-4" />
+                      <div className="flex items-center space-x-4 text-xs text-gray-600">
+                        <div className="flex items-center space-x-1">
+                          <Calendar className="h-2.5 w-2.5" />
                           <span>{vehicle.year || 'N/A'}</span>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <User className="h-4 w-4" />
+                        <div className="flex items-center space-x-1">
+                          <User className="h-2.5 w-2.5" />
                           <span className="truncate">{getCustomerInfo(vehicle._id)}</span>
                         </div>
                         {vehicle.color && (
-                          <div className="flex items-center space-x-2">
-                            <div className="h-4 w-4 rounded-full bg-gray-400"></div>
+                          <div className="flex items-center space-x-1">
+                            <div className="h-2.5 w-2.5 rounded-full bg-gray-400"></div>
                             <span>{vehicle.color}</span>
                           </div>
                         )}
@@ -239,37 +229,37 @@ const VehiclesManagement: React.FC = () => {
                     </div>
                   </div>
                   
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-1">
                     <button
                       onClick={() => handleEdit(vehicle)}
-                      className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                      title="Edit Vehicle"
+                      className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                      title="Edit"
                     >
-                      <Edit2 size={16} />
+                      <Edit2 size={12} />
                     </button>
                     <button
                       onClick={() => toggleVehicleExpansion(vehicle._id)}
-                      className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                      title={isExpanded ? 'Collapse Orders' : 'View Orders'}
+                      className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                      title={isExpanded ? 'Collapse' : 'Expand'}
                     >
-                      {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                     </button>
                   </div>
                 </div>
                 
                 {(vehicle.engineNumber || vehicle.chassisNumber) && (
-                  <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       {vehicle.engineNumber && (
                         <div>
-                          <span className="text-gray-600 font-medium">Engine:</span>
-                          <span className="ml-2 font-mono text-gray-900">{vehicle.engineNumber}</span>
+                          <span className="text-gray-500">Engine:</span>
+                          <span className="ml-1 font-mono text-gray-700">{vehicle.engineNumber}</span>
                         </div>
                       )}
                       {vehicle.chassisNumber && (
                         <div>
-                          <span className="text-gray-600 font-medium">Chassis:</span>
-                          <span className="ml-2 font-mono text-gray-900">{vehicle.chassisNumber}</span>
+                          <span className="text-gray-500">Chassis:</span>
+                          <span className="ml-1 font-mono text-gray-700">{vehicle.chassisNumber}</span>
                         </div>
                       )}
                     </div>

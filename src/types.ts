@@ -36,6 +36,8 @@ export interface Vehicle {
   color?: string;
   engineNumber?: string;
   chassisNumber?: string;
+  // Optional link to customer if server provides it
+  customerId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -86,7 +88,7 @@ export interface DataContextType {
   loadOrders: () => Promise<void>;
   
   // Customer operations
-  addCustomer: (customer: Omit<Customer, '_id' | 'id' | 'createdAt' | 'updatedAt'>) => Promise<Customer>;
+  addCustomer: (customer: Omit<Customer, '_id' | 'id' | 'uniqueCode' | 'createdAt' | 'updatedAt'>) => Promise<Customer>;
   updateCustomer: (uniqueCode: string, customer: Partial<Customer>) => Promise<void>;
   searchCustomers: (searchTerm: string) => Promise<Customer[]>;
   
@@ -96,7 +98,7 @@ export interface DataContextType {
   searchVehicles: (searchTerm: string) => Promise<Vehicle[]>;
   
   // Order operations
-  addOrder: (order: Omit<Order, '_id' | 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  addOrder: (order: Omit<Order, '_id' | 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateOrder: (orderNumber: string, order: Partial<Order>) => Promise<void>;
   getOrdersByCustomer: (customerId: string) => Promise<Order[]>;
   getOrdersByVehicle: (vehicleId: string) => Promise<Order[]>;

@@ -1,19 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Eye, Calendar, User, Car, Wrench, Phone, Mail, MapPin, ChevronDown, ChevronRight, X, Save, AlertCircle } from 'lucide-react';
+import { Plus, Search, Edit, Eye, Calendar, User, Car, Wrench, ChevronDown, ChevronRight, X, Save, AlertCircle } from 'lucide-react';
 import { Order } from '../types';
 import { useData } from '../contexts/DataContext';
 import { 
-  validateOrderWithData,
-  type CreateOrderWithDataInput,
   type ServiceInput 
 } from '../utils/validation';
 import Toast from './Toast';
-
-interface OrderCreationMode {
-  mode: 'existing' | 'new';
-  selectedCustomerId?: string;
-  selectedVehicleId?: string;
-}
 
 interface NewOrderData {
   customer: {
@@ -35,8 +27,8 @@ interface NewOrderData {
   notes: string;
 }
 
-const OrdersManagement: React.FC = () => {
-  const { orders, customers, vehicles, loading, loadOrders, loadCustomers, loadVehicles, addOrder, addCustomer, addVehicle } = useData();
+const OrdersManagement: React.FC<any> = ({ navigate }) => {
+  const { orders, customers, vehicles, loading, loadOrders, loadCustomers, loadVehicles, addOrder, addCustomer, addVehicle, searchCustomers, searchVehicles } = useData();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -51,11 +43,15 @@ const OrdersManagement: React.FC = () => {
     services: false
   });
   
-  const [orderMode, setOrderMode] = useState<OrderCreationMode>({
-    mode: 'new',
-    selectedCustomerId: undefined,
-    selectedVehicleId: undefined
-  });
+  // Independent modes and selections
+  const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('existing');
+  const [vehicleMode, setVehicleMode] = useState<'existing' | 'new'>('existing');
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
+  const [customerQuery, setCustomerQuery] = useState('');
+  const [customerSuggestions, setCustomerSuggestions] = useState<any[]>([]);
+  const [vehicleQuery, setVehicleQuery] = useState('');
+  const [vehicleSuggestions, setVehicleSuggestions] = useState<any[]>([]);
   
   const [newOrderData, setNewOrderData] = useState<NewOrderData>({
     customer: {
@@ -145,48 +141,33 @@ const OrdersManagement: React.FC = () => {
 
   const validateForm = (): boolean => {
     const errors: {[key: string]: string} = {};
-
-    // Validate using native validation
-    const validationData: CreateOrderWithDataInput = {
-      customer: {
-        name: newOrderData.customer.name,
-        email: newOrderData.customer.email || '',
-        mobile: newOrderData.customer.mobile,
-        address: newOrderData.customer.address || ''
-      },
-      vehicle: {
-        vehicleNumber: newOrderData.vehicle.vehicleNumber,
-        make: newOrderData.vehicle.make,
-        vehicleModel: newOrderData.vehicle.vehicleModel,
-        year: newOrderData.vehicle.year || undefined,
-        color: newOrderData.vehicle.color || '',
-        engineNumber: newOrderData.vehicle.engineNumber || '',
-        chassisNumber: newOrderData.vehicle.chassisNumber || ''
-      },
-      services: newOrderData.services,
-      notes: newOrderData.notes || ''
-    };
-
-    const validationErrors = validateOrderWithData(validationData);
-    if (validationErrors.length > 0) {
-      const errorMap: {[key: string]: string} = {};
-      validationErrors.forEach(error => {
-        errorMap[error.field] = error.message;
+    if (customerMode === 'new') {
+      const name = newOrderData.customer.name.trim();
+      const mobile = newOrderData.customer.mobile.trim();
+      if (!name) errors['customer.name'] = 'Customer name is required';
+      if (!mobile) {
+        errors['customer.mobile'] = 'Mobile is required';
+      } else if (!/^\d{10,}$/.test(mobile)) {
+        errors['customer.mobile'] = 'Enter at least 10 digits';
+      }
+    } else {
+      if (!selectedCustomerId) errors['selectedCustomer'] = 'Please select a customer';
+    }
+    if (vehicleMode === 'new') {
+      if (!newOrderData.vehicle.vehicleNumber.trim()) errors['vehicle.vehicleNumber'] = 'Vehicle number is required';
+      if (!newOrderData.vehicle.make.trim()) errors['vehicle.make'] = 'Make is required';
+      if (!newOrderData.vehicle.vehicleModel.trim()) errors['vehicle.vehicleModel'] = 'Model is required';
+    } else {
+      if (!selectedVehicleId) errors['selectedVehicle'] = 'Please select a vehicle';
+    }
+    if (newOrderData.services.length === 0) {
+      errors['services'] = 'Add at least one service';
+    } else {
+      newOrderData.services.forEach((s, i) => {
+        if (!s.name.trim()) errors[`service.${i}.name`] = 'Service name is required';
+        if (!(typeof s.amount === 'number') || s.amount <= 0) errors[`service.${i}.amount`] = 'Amount must be greater than 0';
       });
-      setFormErrors(errorMap);
-      return false;
     }
-
-    // Additional validation for existing customer/vehicle mode
-    if (orderMode.mode === 'existing') {
-      if (!orderMode.selectedCustomerId) {
-        errors['selectedCustomer'] = 'Please select a customer';
-      }
-      if (!orderMode.selectedVehicleId) {
-        errors['selectedVehicle'] = 'Please select a vehicle';
-      }
-    }
-
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -201,19 +182,21 @@ const OrdersManagement: React.FC = () => {
       let customerId: string;
       let vehicleId: string;
 
-      if (orderMode.mode === 'existing') {
-        // Use existing customer and vehicle
-        customerId = orderMode.selectedCustomerId!;
-        vehicleId = orderMode.selectedVehicleId!;
+      if (customerMode === 'existing') {
+        customerId = selectedCustomerId;
       } else {
-        // Create new customer and vehicle
-        const newCustomer = await addCustomer({
-          name: newOrderData.customer.name,
-          email: newOrderData.customer.email || undefined,
-          mobile: newOrderData.customer.mobile,
-          address: newOrderData.customer.address || undefined
+        const created = await addCustomer({
+          name: newOrderData.customer.name.trim(),
+          email: newOrderData.customer.email?.trim() || undefined,
+          mobile: newOrderData.customer.mobile.trim(),
+          address: newOrderData.customer.address?.trim() || undefined
         } as any);
+        customerId = created._id;
+      }
 
+      if (vehicleMode === 'existing') {
+        vehicleId = selectedVehicleId;
+      } else {
         const vehicleData = {
           vehicleNumber: newOrderData.vehicle.vehicleNumber,
           make: newOrderData.vehicle.make,
@@ -223,13 +206,8 @@ const OrdersManagement: React.FC = () => {
           engineNumber: newOrderData.vehicle.engineNumber || undefined,
           chassisNumber: newOrderData.vehicle.chassisNumber || undefined
         };
-
-        // Create vehicle
-        const newVehicle = await addVehicle(vehicleData);
-
-        // Use the returned IDs directly
-        customerId = newCustomer._id;
-        vehicleId = newVehicle._id;
+        const createdVehicle = await addVehicle(vehicleData as any);
+        vehicleId = createdVehicle._id;
       }
 
       // Create order with backend-expected structure
@@ -237,8 +215,8 @@ const OrdersManagement: React.FC = () => {
           customerId,
           vehicleId,
           services: newOrderData.services.map(service => ({
-            name: service.name,
-            description: service.description || undefined,
+            name: service.name.trim(),
+            description: service.description?.trim() || undefined,
             amount: service.amount
           })),
           notes: newOrderData.notes || undefined
@@ -281,11 +259,14 @@ const OrdersManagement: React.FC = () => {
       services: [],
       notes: ''
     });
-    setOrderMode({
-      mode: 'new',
-      selectedCustomerId: undefined,
-      selectedVehicleId: undefined
-    });
+    setCustomerMode('existing');
+    setVehicleMode('existing');
+    setSelectedCustomerId('');
+    setSelectedVehicleId('');
+    setCustomerQuery('');
+    setVehicleQuery('');
+    setCustomerSuggestions([]);
+    setVehicleSuggestions([]);
     setExpandedSections({ customer: true, vehicle: false, services: false });
     setFormErrors({});
   };
@@ -296,6 +277,42 @@ const OrdersManagement: React.FC = () => {
     loadCustomers();
     loadVehicles();
   }, [loadOrders, loadCustomers, loadVehicles]);
+
+  // Autocomplete: customers (code-only)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const q = customerQuery.trim();
+      if (!q) { setCustomerSuggestions([]); return; }
+      try {
+        const results = await searchCustomers(q);
+        const qLower = q.toLowerCase();
+        const filtered = (results || []).filter((c: any) => (c.uniqueCode || '').toLowerCase().includes(qLower));
+        if (!cancelled) setCustomerSuggestions(filtered);
+      } catch {
+        setCustomerSuggestions([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [customerQuery, searchCustomers]);
+
+  // Autocomplete: vehicles (vehicle number only)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const q = vehicleQuery.trim();
+      if (!q) { setVehicleSuggestions([]); return; }
+      try {
+        const results = await searchVehicles(q);
+        const qLower = q.toLowerCase();
+        const filtered = (results || []).filter((v: any) => (v.vehicleNumber || '').toLowerCase().includes(qLower));
+        if (!cancelled) setVehicleSuggestions(filtered);
+      } catch {
+        setVehicleSuggestions([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [vehicleQuery, searchVehicles]);
 
   const filteredOrders = orders.filter(order => {
     const customer = customers.find(c => c._id === order.customerId);
@@ -322,6 +339,10 @@ const OrdersManagement: React.FC = () => {
   };
 
   const handleViewOrder = (order: Order) => {
+    if (navigate) {
+      navigate('orderDetails', { orderId: order._id });
+      return;
+    }
     setSelectedOrder(order);
     setShowModal(true);
   };
@@ -461,11 +482,13 @@ const OrdersManagement: React.FC = () => {
                       <Eye size={18} />
                     </button>
                     <button
+                      onClick={() => navigate && navigate('orderDetails', { orderId: order._id })}
                       className="icon-btn icon-btn-success p-3 hover:scale-110 transition-all duration-200"
-                      title="Edit Order"
+                      title="Edit Services"
                     >
                       <Edit size={18} />
                     </button>
+                    {false && (
                     <button
                       onClick={() => {toggleOrderExpansion(order._id)}}
                       className="icon-btn icon-btn-primary p-3 hover:scale-110 transition-all duration-200"
@@ -473,6 +496,7 @@ const OrdersManagement: React.FC = () => {
                     >
                       {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                     </button>
+                    )}
                   </div>
                 </div>
                 
@@ -501,130 +525,7 @@ const OrdersManagement: React.FC = () => {
                 </div>
               </div>
 
-              {/* Expanded Details Section */}
-              {isExpanded && (
-                <div className="border-t border-gray-200/60 bg-gradient-to-br from-gray-50/50 to-slate-50/30 animate-slide-in">
-                  <div className="p-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {/* Customer Details */}
-                      <div className="card p-6 hover:shadow-md transition-all duration-200">
-                        <h4 className="font-bold text-gray-900 mb-4 flex items-center text-lg">
-                          <div className="p-2 bg-blue-100 rounded-lg mr-3">
-                            <User className="h-5 w-5 text-blue-600" />
-                          </div>
-                          Customer Information
-                        </h4>
-                        {customer ? (
-                          <div className="space-y-2 text-sm">
-                            <div>
-                              <span className="text-gray-600">Name:</span>
-                              <span className="ml-2 text-gray-900 font-medium">{customer.name}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <Phone className="h-3 w-3 text-gray-400 mr-1" />
-                              <span className="text-gray-600">Phone:</span>
-                              <span className="ml-2 text-gray-900">{customer.mobile}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <Mail className="h-3 w-3 text-gray-400 mr-1" />
-                              <span className="text-gray-600">Email:</span>
-                              <span className="ml-2 text-gray-900">{customer.email || 'N/A'}</span>
-                            </div>
-                            {customer.address && (
-                              <div className="flex items-start">
-                                <MapPin className="h-3 w-3 text-gray-400 mr-1 mt-1" />
-                                <span className="text-gray-600">Address:</span>
-                                <span className="ml-2 text-gray-900">{customer.address}</span>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <p className="text-gray-500 text-sm">Customer information not available</p>
-                        )}
-                      </div>
-
-                      {/* Vehicle Details */}
-                      <div className="card p-6 hover:shadow-md transition-all duration-200">
-                        <h4 className="font-bold text-gray-900 mb-4 flex items-center text-lg">
-                          <div className="p-2 bg-green-100 rounded-lg mr-3">
-                            <Car className="h-5 w-5 text-green-600" />
-                          </div>
-                          Vehicle Information
-                        </h4>
-                        {vehicle ? (
-                          <div className="space-y-2 text-sm">
-                            <div>
-                              <span className="text-gray-600">Vehicle:</span>
-                              <span className="ml-2 text-gray-900 font-medium">
-                                {vehicle.year} {vehicle.make} {vehicle.vehicleModel}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-gray-600">Registration:</span>
-                              <span className="ml-2 text-gray-900 font-mono">{vehicle.vehicleNumber}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-600">Color:</span>
-                              <span className="ml-2 text-gray-900">{vehicle.color || 'N/A'}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-600">Engine:</span>
-                              <span className="ml-2 text-gray-900 font-mono">{vehicle.engineNumber || 'N/A'}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-600">Chassis:</span>
-                              <span className="ml-2 text-gray-900 font-mono">{vehicle.chassisNumber || 'N/A'}</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="text-gray-500 text-sm">Vehicle information not available</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Services Details */}
-                    <div className="mt-6 card p-6 hover:shadow-md transition-all duration-200">
-                      <h4 className="font-bold text-gray-900 mb-4 flex items-center text-lg">
-                        <div className="p-2 bg-purple-100 rounded-lg mr-3">
-                          <Wrench className="h-5 w-5 text-purple-600" />
-                        </div>
-                        Services Performed
-                      </h4>
-                      <div className="space-y-3">
-                        {order.services.map((service, index) => (
-                          <div key={index} className="flex justify-between items-center p-4 bg-gradient-to-r from-gray-50 to-gray-100/50 rounded-xl border border-gray-200/60 hover:shadow-sm transition-all duration-200">
-                            <div className="flex-1">
-                              <div className="font-bold text-gray-900 text-base">{service.name}</div>
-                              {service.description && (
-                                <div className="text-sm text-gray-600 mt-1">{service.description}</div>
-                              )}
-                            </div>
-                            <div className="ml-4">
-                              <span className="font-bold text-lg text-green-600">${service.amount.toFixed(2)}</span>
-                            </div>
-                          </div>
-                        ))}
-                        <div className="border-t border-gray-300 pt-4 mt-4 bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl">
-                          <div className="flex justify-between items-center">
-                            <span className="font-bold text-xl text-gray-900">Total Amount:</span>
-                            <span className="font-bold text-2xl text-green-600">${order.totalAmount.toFixed(2)}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Notes */}
-                    {order.notes && (
-                      <div className="mt-6 card p-6 hover:shadow-md transition-all duration-200">
-                        <h4 className="font-bold text-gray-900 mb-3 text-lg">Additional Notes</h4>
-                        <div className="p-4 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl border border-amber-200/60">
-                          <p className="text-gray-700 leading-relaxed">{order.notes}</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+              {/* Expanded Details Section removed in favor of dedicated page */}
             </div>
           );
         })}
@@ -762,58 +663,18 @@ const OrdersManagement: React.FC = () => {
             </div>
 
             <div className="p-8 space-y-8">
-              {/* Order Mode Selection */}
-              <div className="card p-6 bg-gradient-to-r from-blue-50 to-blue-100/50 border border-blue-200/60">
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-base font-bold text-blue-700 mb-4">Order Creation Mode</label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <label className="flex items-center p-4 bg-white rounded-xl border-2 border-transparent hover:border-blue-300 cursor-pointer transition-all duration-200 group">
-                        <input
-                          type="radio"
-                          name="orderMode"
-                          value="new"
-                          checked={orderMode.mode === 'new'}
-                          onChange={() => setOrderMode({ mode: 'new', selectedCustomerId: undefined, selectedVehicleId: undefined })}
-                          className="mr-3 w-4 h-4 text-blue-600"
-                        />
-                        <div>
-                          <span className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">Create New Customer & Vehicle</span>
-                          <p className="text-sm text-gray-600 mt-1">Add new customer and vehicle information</p>
-                        </div>
-                      </label>
-                      <label className="flex items-center p-4 bg-white rounded-xl border-2 border-transparent hover:border-blue-300 cursor-pointer transition-all duration-200 group">
-                        <input
-                          type="radio"
-                          name="orderMode"
-                          value="existing"
-                          checked={orderMode.mode === 'existing'}
-                          onChange={() => setOrderMode({ mode: 'existing', selectedCustomerId: undefined, selectedVehicleId: undefined })}
-                          className="mr-3 w-4 h-4 text-blue-600"
-                        />
-                        <div>
-                          <span className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">Use Existing Customer & Vehicle</span>
-                          <p className="text-sm text-gray-600 mt-1">Select from existing database</p>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-                  <div className="p-4 bg-blue-100/50 rounded-xl">
-                    <p className="text-sm text-blue-700 font-medium">💡 Order number and total amount will be automatically generated by the system</p>
-                  </div>
-                </div>
-              </div>
+              
 
               {/* Existing Customer/Vehicle Selection */}
-              {orderMode.mode === 'existing' && (
+              {false && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Select Customer <span className="text-red-500">*</span>
                     </label>
                     <select
-                      value={orderMode.selectedCustomerId || ''}
-                      onChange={(e) => setOrderMode(prev => ({ ...prev, selectedCustomerId: e.target.value }))}
+                      value={''}
+                      onChange={() => {}}
                       className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                         formErrors['selectedCustomer'] ? 'border-red-500' : 'border-gray-300'
                       }`}
@@ -838,8 +699,8 @@ const OrdersManagement: React.FC = () => {
                       Select Vehicle <span className="text-red-500">*</span>
                     </label>
                     <select
-                      value={orderMode.selectedVehicleId || ''}
-                      onChange={(e) => setOrderMode(prev => ({ ...prev, selectedVehicleId: e.target.value }))}
+                      value={''}
+                      onChange={() => {}}
                       className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                         formErrors['selectedVehicle'] ? 'border-red-500' : 'border-gray-300'
                       }`}
@@ -861,8 +722,8 @@ const OrdersManagement: React.FC = () => {
                 </div>
               )}
 
-              {/* Customer Details Accordion */}
-              {orderMode.mode === 'new' && (
+              {/* Customer Section */}
+              {true && (
                 <div className="border border-gray-200 rounded-lg">
                   <button
                     onClick={() => toggleSection('customer')}
@@ -877,6 +738,58 @@ const OrdersManagement: React.FC = () => {
                 
                 {expandedSections.customer && (
                   <div className="p-4 border-t border-gray-200 space-y-4">
+                    <div className="flex items-center gap-4">
+                      <label className="inline-flex items-center text-sm">
+                        <input type="radio" checked={customerMode === 'existing'} onChange={() => setCustomerMode('existing')} />
+                        <span className="ml-2">Existing</span>
+                      </label>
+                      <label className="inline-flex items-center text-sm">
+                        <input type="radio" checked={customerMode === 'new'} onChange={() => setCustomerMode('new')} />
+                        <span className="ml-2">New</span>
+                      </label>
+                    </div>
+                    {customerMode === 'existing' ? (
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Search by customer code</label>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                          <input
+                            value={customerQuery}
+                            onChange={(e) => setCustomerQuery(e.target.value)}
+                            placeholder="Type to search..."
+                            className={`input pl-9 w-full ${formErrors['selectedCustomer'] ? 'border-red-500' : ''}`}
+                          />
+                          {customerSuggestions.length > 0 && (
+                            <div className="absolute left-0 right-0 mt-1 bg-white border rounded shadow z-30 max-h-56 overflow-auto">
+                              {customerSuggestions.map((c: any) => (
+                                <button
+                                  key={c._id}
+                                  type="button"
+                                  onClick={() => { setSelectedCustomerId(c._id); setCustomerQuery(''); setCustomerSuggestions([]); }}
+                                  className="w-full text-left px-3 py-2 hover:bg-gray-50"
+                                >
+                                  <div className="font-semibold">{c.uniqueCode}</div>
+                                  <div className="text-xs text-gray-600">{c.name}</div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <select
+                          value={selectedCustomerId}
+                          onChange={(e) => setSelectedCustomerId(e.target.value)}
+                          className={`input w-full ${formErrors['selectedCustomer'] ? 'border-red-500' : ''}`}
+                        >
+                          <option value="">Or choose by code...</option>
+                          {customers.map(c => (
+                            <option key={c._id} value={c._id}>{c.uniqueCode} - {c.name}</option>
+                          ))}
+                        </select>
+                        {formErrors['selectedCustomer'] && (
+                          <p className="text-red-500 text-sm mt-1 flex items-center"><AlertCircle size={16} className="mr-1" />{formErrors['selectedCustomer']}</p>
+                        )}
+                      </div>
+                    ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -958,13 +871,14 @@ const OrdersManagement: React.FC = () => {
                         )}
                       </div>
                     </div>
+                    )}
                   </div>
                 )}
               </div>
               )}
 
-              {/* Vehicle Details Accordion */}
-              {orderMode.mode === 'new' && (
+              {/* Vehicle Section */}
+              {true && (
                 <div className="border border-gray-200 rounded-lg">
                   <button
                     onClick={() => toggleSection('vehicle')}
@@ -979,6 +893,36 @@ const OrdersManagement: React.FC = () => {
                 
                 {expandedSections.vehicle && (
                   <div className="p-4 border-t border-gray-200 space-y-4">
+                    <div className="flex items-center gap-4">
+                      <label className="inline-flex items-center text-sm"><input type="radio" checked={vehicleMode === 'existing'} onChange={() => setVehicleMode('existing')} /><span className="ml-2">Existing</span></label>
+                      <label className="inline-flex items-center text-sm"><input type="radio" checked={vehicleMode === 'new'} onChange={() => setVehicleMode('new')} /><span className="ml-2">New</span></label>
+                    </div>
+                    {vehicleMode === 'existing' ? (
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Search by vehicle number</label>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                          <input value={vehicleQuery} onChange={(e) => setVehicleQuery(e.target.value)} placeholder="Type to search..." className={`input pl-9 w-full ${formErrors['selectedVehicle'] ? 'border-red-500' : ''}`} />
+                          {vehicleSuggestions.length > 0 && (
+                            <div className="absolute left-0 right-0 mt-1 bg-white border rounded shadow z-30 max-h-56 overflow-auto">
+                              {vehicleSuggestions.map((v: any) => (
+                                <button key={v._id} type="button" onClick={() => { setSelectedVehicleId(v._id); setVehicleQuery(''); setVehicleSuggestions([]); }} className="w-full text-left px-3 py-2 hover:bg-gray-50">
+                                  <div className="font-semibold">{v.vehicleNumber}</div>
+                                  <div className="text-xs text-gray-600">{v.make} {v.vehicleModel}</div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <select value={selectedVehicleId} onChange={(e) => setSelectedVehicleId(e.target.value)} className={`input w-full ${formErrors['selectedVehicle'] ? 'border-red-500' : ''}`}>
+                          <option value="">Or choose by number...</option>
+                          {vehicles.map(v => (<option key={v._id} value={v._id}>{v.vehicleNumber}</option>))}
+                        </select>
+                        {formErrors['selectedVehicle'] && (
+                          <p className="text-red-500 text-sm mt-1 flex items-center"><AlertCircle size={16} className="mr-1" />{formErrors['selectedVehicle']}</p>
+                        )}
+                      </div>
+                    ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1089,6 +1033,7 @@ const OrdersManagement: React.FC = () => {
                         />
                       </div>
                     </div>
+                    )}
                   </div>
                 )}
               </div>

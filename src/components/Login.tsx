@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Wrench, Eye, EyeOff, ArrowRight, Sparkles, Shield, AlertCircle } from 'lucide-react';
-import { validateEmail, validatePassword } from '../utils/validation';
 
 const Login: React.FC = () => {
   const { login } = useAuth();
@@ -10,54 +9,55 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
+  const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setValidationErrors({});
-    
-    // Client-side validation
-    const emailError = validateEmail(email);
-    const passwordError = validatePassword(password);
-    
-    const newValidationErrors: {[key: string]: string} = {};
-    if (emailError) newValidationErrors[emailError.field] = emailError.message;
-    if (passwordError) newValidationErrors[passwordError.field] = passwordError.message;
-    
-    if (Object.keys(newValidationErrors).length > 0) {
-      setValidationErrors(newValidationErrors);
-      return;
-    }
-    
+    setFieldErrors({});
     setIsLoading(true);
-    const success = await login(email, password);
     
-    if (!success) {
-      setError('Invalid email or password. Please check your credentials and try again.');
+    try {
+      const success = await login(email, password);
+      if (!success) {
+        setError('Invalid email or password. Please check your credentials and try again.');
+      }
+    } catch (err: any) {
+      // Handle backend validation errors
+      if (err.response?.status === 400 && err.response?.data?.errors) {
+        const backendErrors: {[key: string]: string} = {};
+        err.response.data.errors.forEach((error: {field: string, message: string}) => {
+          backendErrors[error.field] = error.message;
+        });
+        setFieldErrors(backendErrors);
+      } else {
+        setError(err.response?.data?.message || 'Login failed. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
   
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setEmail(value);
     
-    // Clear validation error when user starts typing
-    if (validationErrors.email) {
-      setValidationErrors(prev => ({ ...prev, email: '' }));
+    // Clear field error when user starts typing
+    if (fieldErrors.email) {
+      setFieldErrors(prev => ({ ...prev, email: '' }));
     }
+    setError('');
   };
   
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setPassword(value);
     
-    // Clear validation error when user starts typing
-    if (validationErrors.password) {
-      setValidationErrors(prev => ({ ...prev, password: '' }));
+    // Clear field error when user starts typing
+    if (fieldErrors.password) {
+      setFieldErrors(prev => ({ ...prev, password: '' }));
     }
+    setError('');
   };
 
 
@@ -113,7 +113,7 @@ const Login: React.FC = () => {
             <h2 className="text-xl font-semibold text-gray-800">Secure Login</h2>
           </div>
           
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6" noValidate>
             {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
@@ -125,17 +125,16 @@ const Login: React.FC = () => {
                 value={email}
                 onChange={handleEmailChange}
                 className={`w-full px-4 py-3 border rounded-xl focus:ring-2 transition-all duration-300 bg-gray-50 focus:bg-white hover:border-gray-400 ${
-                  validationErrors.email 
+                  fieldErrors.email 
                     ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
                     : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
                 }`}
                 placeholder="Enter your email"
-                required
               />
-              {validationErrors.email && (
+              {fieldErrors.email && (
                 <div className="mt-2 flex items-center text-red-600 text-sm">
                   <AlertCircle className="h-4 w-4 mr-1" />
-                  <span>{validationErrors.email}</span>
+                  <span>{fieldErrors.email}</span>
                 </div>
               )}
             </div>
@@ -152,13 +151,12 @@ const Login: React.FC = () => {
                   value={password}
                   onChange={handlePasswordChange}
                   className={`w-full px-4 py-3 border rounded-xl focus:ring-2 transition-all duration-300 bg-gray-50 focus:bg-white hover:border-gray-400 ${
-                    validationErrors.password 
+                    fieldErrors.password 
                       ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
                       : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
                   }`}
                   placeholder="Enter your password"
-                  required
-                />
+                  />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
@@ -167,10 +165,10 @@ const Login: React.FC = () => {
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
-              {validationErrors.password && (
+              {fieldErrors.password && (
                 <div className="mt-2 flex items-center text-red-600 text-sm">
                   <AlertCircle className="h-4 w-4 mr-1" />
-                  <span>{validationErrors.password}</span>
+                  <span>{fieldErrors.password}</span>
                 </div>
               )}
             </div>

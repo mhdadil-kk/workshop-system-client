@@ -74,7 +74,7 @@ const AdminDashboard: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Orders</p>
+              <p className="text-sm font-medium text-gray-600"> Orders</p>
               <p className="text-2xl font-bold text-gray-900">{totalOrders}</p>
               <div className="flex items-center mt-2">
                 <TrendingUp className="h-4 w-4 text-blue-500 mr-1" />
