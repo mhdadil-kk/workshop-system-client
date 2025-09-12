@@ -3,7 +3,7 @@ import { useData } from '../contexts/DataContext';
 import { Car, Plus, Edit2, Search, User, Calendar, AlertCircle, ChevronDown, ChevronRight, Wrench } from 'lucide-react';
 import { Vehicle, Order } from '../types';
 
-const VehiclesManagement: React.FC = () => {
+const VehiclesManagement: React.FC<any> = ({ navigate }) => {
   const { vehicles, customers, loading, loadVehicles, loadCustomers, loadOrders, addVehicle, updateVehicle, getOrdersByVehicle } = useData();
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -74,20 +74,25 @@ const VehiclesManagement: React.FC = () => {
       } else {
         await addVehicle(vehicleData);
       }
+      // Reset form and close modal on success
       resetForm();
+      // Refresh vehicle list to show updated data
+      await loadVehicles();
     } catch (error: any) {
       console.error('Failed to save vehicle:', error);
       
-      // Handle backend validation errors
+      // Handle backend validation errors - display backend messages directly
       if (error.response?.status === 400 && error.response?.data?.errors) {
         const backendErrors: {[key: string]: string} = {};
         error.response.data.errors.forEach((err: {field: string, message: string}) => {
           backendErrors[err.field] = err.message;
         });
         setFieldErrors(backendErrors);
+      } else if (error.response?.data?.message) {
+        // Display backend error message directly
+        setError(error.response.data.message);
       } else {
-        const errorMessage = error.response?.data?.message || 'Failed to save vehicle. Please try again.';
-        setError(errorMessage);
+        setError('Failed to save vehicle. Please try again.');
       }
     }
   };
@@ -291,7 +296,11 @@ const VehiclesManagement: React.FC = () => {
                     {orders.length > 0 ? (
                       <div className="space-y-2">
                         {orders.slice(0, 3).map((order) => (
-                          <div key={order._id} className="card p-3 bg-white border border-gray-200">
+                          <div 
+                            key={order._id} 
+                            className="card p-3 bg-white border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
+                            onClick={() => navigate && navigate('orderDetails', { orderId: order._id })}
+                          >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-2">
                                 <div className="w-6 h-6 bg-purple-100 rounded flex items-center justify-center">
@@ -388,7 +397,6 @@ const VehiclesManagement: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    required
                     value={formData.vehicleNumber}
                     onChange={(e) => handleInputChange('vehicleNumber', e.target.value)}
                     className="input py-2 text-sm"
@@ -408,7 +416,6 @@ const VehiclesManagement: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    required
                     value={formData.make}
                     onChange={(e) => handleInputChange('make', e.target.value)}
                     className="input py-2 text-sm"
@@ -430,12 +437,21 @@ const VehiclesManagement: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    required
                     value={formData.vehicleModel}
                     onChange={(e) => handleInputChange('vehicleModel', e.target.value)}
-                    className="input py-2 text-sm"
+                    className={`input py-2 text-sm ${
+                      fieldErrors.vehicleModel 
+                        ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                        : 'border-gray-300 focus:ring-purple-500 focus:border-purple-500'
+                    }`}
                     placeholder="Camry, Civic..."
                   />
+                  {fieldErrors.vehicleModel && (
+                    <div className="mt-1 flex items-center text-red-600 text-xs">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      <span>{fieldErrors.vehicleModel}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -500,7 +516,6 @@ const VehiclesManagement: React.FC = () => {
                   Customer {!editingVehicle && <span className="text-red-500">*</span>}
                 </label>
                 <select
-                  required={!editingVehicle}
                   value={formData.customerId}
                   onChange={(e) => handleInputChange('customerId', e.target.value)}
                   className="input py-2 text-sm"

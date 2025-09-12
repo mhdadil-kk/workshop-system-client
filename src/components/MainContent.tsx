@@ -17,11 +17,11 @@ const MainContent: React.FC<MainContentProps> = ({ activeTab, navigate, routePar
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <AdminDashboard />;
+        return <AdminDashboard navigate={navigate} />;
       case 'customers':
-        return <CustomersManagement />;
+        return <CustomersManagement navigate={navigate} />;
       case 'vehicles':
-        return <VehiclesManagement />;
+        return <VehiclesManagement navigate={navigate} />;
       case 'orders':
         return <OrdersManagement navigate={navigate} />;
       case 'orderDetails':

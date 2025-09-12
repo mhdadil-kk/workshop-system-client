@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../contexts/DataContext';
-import { Users, Plus, Edit2, Search, User, Phone, Mail, MapPin, AlertCircle, ChevronDown, ChevronRight, Wrench, DollarSign, Calendar } from 'lucide-react';
+import { Users, Plus, Edit2, Search, User, Phone, Mail, MapPin, AlertCircle, ChevronDown, ChevronRight, Wrench } from 'lucide-react';
 import { Customer, Order } from '../types';
 
-const CustomersManagement: React.FC = () => {
+const CustomersManagement: React.FC<any> = ({ navigate }) => {
   const { customers, vehicles, loading, loadCustomers, loadVehicles, loadOrders, addCustomer, updateCustomer, getOrdersByCustomer } = useData();
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -54,20 +54,25 @@ const CustomersManagement: React.FC = () => {
       } else {
         await addCustomer(formData);
       }
-      setShowModal(false);
+      // Reset form and close modal on success
+      resetForm();
+      // Refresh customer list to show updated data
+      await loadCustomers();
     } catch (error: any) {
       console.error('Failed to save customer:', error);
       
-      // Handle backend validation errors
+      // Handle backend validation errors - display backend messages directly
       if (error.response?.status === 400 && error.response?.data?.errors) {
         const backendErrors: {[key: string]: string} = {};
         error.response.data.errors.forEach((err: {field: string, message: string}) => {
           backendErrors[err.field] = err.message;
         });
         setFieldErrors(backendErrors);
+      } else if (error.response?.data?.message) {
+        // Display backend error message directly
+        setError(error.response.data.message);
       } else {
-        const errorMessage = error.response?.data?.message || 'Failed to save customer. Please try again.';
-        setError(errorMessage);
+        setError('Failed to save customer. Please try again.');
       }
     }
   };
@@ -126,11 +131,6 @@ const CustomersManagement: React.FC = () => {
     setExpandedCustomers(newExpanded);
   };
 
-  const getVehicleInfo = (vehicleId: string) => {
-    const vehicle = vehicles.find(v => v._id === vehicleId || v.id === vehicleId);
-    if (!vehicle) return 'Unknown Vehicle';
-    return `${vehicle.year || ''} ${vehicle.make} ${vehicle.vehicleModel} (${vehicle.vehicleNumber})`.trim();
-  };
 
   const [customerOrders, setCustomerOrders] = useState<{[key: string]: Order[]}>({});
 
@@ -239,81 +239,54 @@ const CustomersManagement: React.FC = () => {
 
               {/* Expanded Orders Section */}
               {isExpanded && (
-                <div className="border-t border-gray-200/60 bg-gradient-to-r from-gray-50 to-gray-100/30">
-                  <div className="p-8">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl flex items-center justify-center shadow-lg">
-                          <Wrench className="h-5 w-5 text-white" />
-                        </div>
-                        <h4 className="text-xl font-bold text-gray-900">
-                          Service History ({orders.length} orders)
-                        </h4>
-                      </div>
+                <div className="border-t border-gray-200 bg-gray-50">
+                  <div className="p-4">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <Wrench className="h-4 w-4 text-purple-600" />
+                      <h4 className="text-sm font-semibold text-gray-900">
+                        Service History ({orders.length})
+                      </h4>
                     </div>
                     
                     {orders.length > 0 ? (
-                      <div className="space-y-4">
-                        {orders.map((order) => (
-                          <div key={order._id} className="card p-6 bg-gradient-to-r from-white to-gray-50/50 hover:shadow-md transition-all duration-200">
-                            <div className="flex items-center justify-between mb-4">
-                              <div className="flex items-center space-x-4">
-                                <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl flex items-center justify-center shadow-lg">
-                                  <Wrench className="h-6 w-6 text-white" />
+                      <div className="space-y-2">
+                        {orders.slice(0, 3).map((order) => (
+                          <div 
+                            key={order._id} 
+                            className="card p-3 bg-white border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
+                            onClick={() => navigate && navigate('orderDetails', { orderId: order._id })}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-6 h-6 bg-purple-100 rounded flex items-center justify-center">
+                                  <Wrench className="h-3 w-3 text-purple-600" />
                                 </div>
                                 <div>
-                                  <div className="font-bold text-gray-900 text-lg">#{order.orderNumber}</div>
-                                  <div className="text-gray-600 flex items-center font-medium">
-                                    <Calendar className="h-4 w-4 mr-2" />
-                                    {new Date(order.createdAt).toLocaleDateString('en-US', {
-                                      year: 'numeric',
-                                      month: 'long',
-                                      day: 'numeric'
-                                    })}
+                                  <div className="text-xs font-semibold text-gray-900">#{order.orderNumber}</div>
+                                  <div className="text-xs text-gray-600">
+                                    {new Date(order.createdAt).toLocaleDateString()}
                                   </div>
                                 </div>
                               </div>
                               <div className="text-right">
-                                <div className="text-gray-600 font-medium mb-1">{order.services.length} service{order.services.length !== 1 ? 's' : ''}</div>
-                                <div className="badge badge-success text-lg font-bold">
-                                  <DollarSign className="h-4 w-4 mr-1" />
-                                  {order.totalAmount.toFixed(2)}
+                                <div className="text-xs text-gray-600">{order.services.length} service{order.services.length !== 1 ? 's' : ''}</div>
+                                <div className="text-xs font-semibold text-green-600">
+                                  ${order.totalAmount.toFixed(2)}
                                 </div>
                               </div>
                             </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <div className="space-y-2">
-                                <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Vehicle</span>
-                                <p className="text-gray-900 font-semibold">{getVehicleInfo(order.vehicleId)}</p>
-                              </div>
-                              <div className="space-y-2">
-                                <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Services</span>
-                                <p className="text-gray-900 font-semibold">
-                                  {order.services.slice(0, 2).map(s => s.name).join(', ')}
-                                  {order.services.length > 2 && (
-                                    <span className="text-purple-600 font-bold"> +{order.services.length - 2} more</span>
-                                  )}
-                                </p>
-                              </div>
-                            </div>
-                            
-                            {order.notes && (
-                              <div className="mt-4 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl border border-amber-200/60">
-                                <p className="text-sm font-bold text-amber-700 uppercase tracking-wide mb-2">Notes</p>
-                                <p className="text-gray-700 leading-relaxed">{order.notes}</p>
-                              </div>
-                            )}
                           </div>
                         ))}
+                        {orders.length > 3 && (
+                          <div className="text-center">
+                            <span className="text-xs text-gray-500">+{orders.length - 3} more orders</span>
+                          </div>
+                        )}
                       </div>
                     ) : (
-                      <div className="card p-12 text-center">
-                        <div className="w-20 h-20 bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                          <Wrench className="h-10 w-10 text-gray-400" />
-                        </div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-3">No Service History</h3>
-                        <p className="text-gray-500 text-lg leading-relaxed">This customer hasn't had any service orders yet. When they do, they'll appear here.</p>
+                      <div className="text-center py-4">
+                        <Wrench className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                        <p className="text-xs text-gray-500">No service history</p>
                       </div>
                     )}
                   </div>
@@ -380,7 +353,6 @@ const CustomersManagement: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  required
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
                   className="input py-3 text-base border-gray-300 focus:ring-blue-500"
@@ -419,7 +391,6 @@ const CustomersManagement: React.FC = () => {
                 </label>
                 <input
                   type="tel"
-                  required
                   value={formData.mobile}
                   onChange={(e) => handleInputChange('mobile', e.target.value)}
                   className={`input py-3 text-base font-mono ${

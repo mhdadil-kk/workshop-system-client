@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Eye, Calendar, User, Car, Wrench, ChevronDown, ChevronRight, X, Save, AlertCircle } from 'lucide-react';
+import { Plus, Search, Eye, Calendar, User, Car, Wrench, ChevronDown, ChevronRight, X, Save, AlertCircle } from 'lucide-react';
 import { Order } from '../types';
 import { useData } from '../contexts/DataContext';
 import { 
@@ -233,7 +233,20 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
       setToast({ message: 'Order created successfully!', type: 'success' });
     } catch (error: any) {
       console.error('Error creating order:', error);
-      setToast({ message: `Failed to create order: ${error?.message || 'Please try again.'}`, type: 'error' });
+      
+      // Display backend error messages directly
+      let errorMessage = 'Failed to create order. Please try again.';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.errors) {
+        // Handle validation errors
+        const errors = error.response.data.errors;
+        if (Array.isArray(errors) && errors.length > 0) {
+          errorMessage = errors.map(err => err.message).join(', ');
+        }
+      }
+      
+      setToast({ message: errorMessage, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -440,15 +453,15 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="relative">
-                      <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-700 rounded-2xl flex items-center justify-center shadow-lg">
-                        <Wrench className="h-7 w-7 text-white" />
+                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl flex items-center justify-center shadow-md">
+                        <Wrench className="h-5 w-5 text-white" />
                       </div>
-                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-xl font-bold text-gray-900">#{order.orderNumber}</h3>
-                        <div className="badge badge-success text-sm font-bold px-3 py-1">
+                        <h3 className="text-lg font-bold text-gray-900">#{order.orderNumber}</h3>
+                        <div className="badge badge-success text-xs font-bold px-2 py-1">
                           ${order.totalAmount.toFixed(2)}
                         </div>
                       </div>
@@ -481,13 +494,6 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
                     >
                       <Eye size={18} />
                     </button>
-                    <button
-                      onClick={() => navigate && navigate('orderDetails', { orderId: order._id })}
-                      className="icon-btn icon-btn-success p-3 hover:scale-110 transition-all duration-200"
-                      title="Edit Services"
-                    >
-                      <Edit size={18} />
-                    </button>
                     {false && (
                     <button
                       onClick={() => {toggleOrderExpansion(order._id)}}
@@ -503,23 +509,23 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
                 {/* Quick Info Cards */}
                 <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="group flex items-center space-x-4 p-4 bg-gradient-to-r from-blue-50 to-blue-100/50 rounded-xl border border-blue-200/50 hover:shadow-md transition-all duration-200">
-                    <div className="p-3 bg-blue-500 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-200">
-                      <User className="h-5 w-5 text-white" />
+                    <div className="p-2 bg-blue-500 rounded-lg shadow-md group-hover:scale-110 transition-transform duration-200">
+                      <User className="h-4 w-4 text-white" />
                     </div>
                     <div className="flex-1">
-                      <div className="font-bold text-gray-900 text-base">{customer?.name || 'Unknown Customer'}</div>
-                      <div className="text-sm text-blue-700 font-medium">{customer?.mobile || 'No contact'}</div>
+                      <div className="font-bold text-gray-900 text-sm">{customer?.name || 'Unknown Customer'}</div>
+                      <div className="text-xs text-blue-700 font-medium">{customer?.mobile || 'No contact'}</div>
                     </div>
                   </div>
                   <div className="group flex items-center space-x-4 p-4 bg-gradient-to-r from-green-50 to-green-100/50 rounded-xl border border-green-200/50 hover:shadow-md transition-all duration-200">
-                    <div className="p-3 bg-green-500 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-200">
-                      <Car className="h-5 w-5 text-white" />
+                    <div className="p-2 bg-green-500 rounded-lg shadow-md group-hover:scale-110 transition-transform duration-200">
+                      <Car className="h-4 w-4 text-white" />
                     </div>
                     <div className="flex-1">
-                      <div className="font-bold text-gray-900 text-base">
+                      <div className="font-bold text-gray-900 text-sm">
                         {vehicle ? `${vehicle.year || ''} ${vehicle.make} ${vehicle.vehicleModel}`.trim() : 'Unknown Vehicle'}
                       </div>
-                      <div className="text-sm text-green-700 font-mono font-medium">{vehicle?.vehicleNumber || 'No registration'}</div>
+                      <div className="text-xs text-green-700 font-mono font-medium">{vehicle?.vehicleNumber || 'No registration'}</div>
                     </div>
                   </div>
                 </div>

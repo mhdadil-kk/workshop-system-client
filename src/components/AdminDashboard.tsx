@@ -3,7 +3,11 @@ import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { BarChart3, TrendingUp, DollarSign, Users, Car, Wrench, Calendar } from 'lucide-react';
 
-const AdminDashboard: React.FC = () => {
+interface AdminDashboardProps {
+  navigate?: (tabId: string, params?: any) => void;
+}
+
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
   const { customers, vehicles, orders, loading, loadOrders, loadCustomers, loadVehicles } = useData();
   const { user } = useAuth();
 
@@ -124,7 +128,10 @@ const AdminDashboard: React.FC = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-gray-900">Recent Orders</h3>
-          <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+          <button 
+            onClick={() => navigate && navigate('orders')}
+            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+          >
             View All
           </button>
         </div>

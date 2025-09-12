@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building2, Plus, Edit2, Trash2, Search, Phone, Mail, User } from 'lucide-react';
+import { Building2, Plus, Edit2, Trash2, Search, Phone, Mail, User, AlertCircle } from 'lucide-react';
 
 interface Showroom {
   id: string;
@@ -34,6 +34,8 @@ const ShowroomsManagement: React.FC = () => {
     email: '',
     manager: ''
   });
+  const [error, setError] = useState<string>('');
+  const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
 
   const filteredShowrooms = showrooms.filter(showroom =>
     showroom.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -61,14 +63,45 @@ const ShowroomsManagement: React.FC = () => {
     setShowrooms(prev => prev.filter(showroom => showroom.id !== id));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingShowroom) {
-      updateShowroom(editingShowroom.id, formData);
-    } else {
-      addShowroom(formData);
+  const handleInputChange = (field: keyof typeof formData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Clear field error when user starts typing
+    if (fieldErrors[field]) {
+      setFieldErrors(prev => ({ ...prev, [field]: '' }));
     }
-    resetForm();
+    setError('');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setFieldErrors({});
+    
+    try {
+      if (editingShowroom) {
+        updateShowroom(editingShowroom.id, formData);
+      } else {
+        addShowroom(formData);
+      }
+      resetForm();
+    } catch (error: any) {
+      console.error('Failed to save showroom:', error);
+      
+      // Handle backend validation errors - display backend messages directly
+      if (error.response?.status === 400 && error.response?.data?.errors) {
+        const backendErrors: {[key: string]: string} = {};
+        error.response.data.errors.forEach((err: {field: string, message: string}) => {
+          backendErrors[err.field] = err.message;
+        });
+        setFieldErrors(backendErrors);
+      } else if (error.response?.data?.message) {
+        // Display backend error message directly
+        setError(error.response.data.message);
+      } else {
+        setError('Failed to save showroom. Please try again.');
+      }
+    }
   };
 
   const resetForm = () => {
@@ -79,6 +112,8 @@ const ShowroomsManagement: React.FC = () => {
       email: '',
       manager: ''
     });
+    setError('');
+    setFieldErrors({});
     setEditingShowroom(null);
     setShowModal(false);
   };
@@ -192,75 +227,129 @@ const ShowroomsManagement: React.FC = () => {
               {editingShowroom ? 'Edit Showroom' : 'Add New Showroom'}
             </h2>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+              {error && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center text-red-600">
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    <span className="text-sm font-medium">{error}</span>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Showroom Name *
+                  Showroom Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  required
                   value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 transition-colors ${
+                    fieldErrors.name 
+                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                  }`}
                   placeholder="Enter showroom name"
                 />
+                {fieldErrors.name && (
+                  <div className="mt-1 flex items-center text-red-600 text-sm">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    <span>{fieldErrors.name}</span>
+                  </div>
+                )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Location *
+                  Location <span className="text-red-500">*</span>
                 </label>
                 <textarea
-                  required
                   value={formData.location}
-                  onChange={(e) => setFormData({...formData, location: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  onChange={(e) => handleInputChange('location', e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 transition-colors ${
+                    fieldErrors.location 
+                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                  }`}
                   placeholder="Enter complete address"
                   rows={2}
                 />
+                {fieldErrors.location && (
+                  <div className="mt-1 flex items-center text-red-600 text-sm">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    <span>{fieldErrors.location}</span>
+                  </div>
+                )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone Number *
+                  Phone Number <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
-                  required
                   value={formData.phone}
-                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 transition-colors ${
+                    fieldErrors.phone 
+                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                  }`}
                   placeholder="Enter phone number"
                 />
+                {fieldErrors.phone && (
+                  <div className="mt-1 flex items-center text-red-600 text-sm">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    <span>{fieldErrors.phone}</span>
+                  </div>
+                )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email Address *
+                  Email Address <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="email"
-                  required
                   value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 transition-colors ${
+                    fieldErrors.email 
+                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                  }`}
                   placeholder="Enter email address"
                 />
+                {fieldErrors.email && (
+                  <div className="mt-1 flex items-center text-red-600 text-sm">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    <span>{fieldErrors.email}</span>
+                  </div>
+                )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Manager Name *
+                  Manager Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  required
                   value={formData.manager}
-                  onChange={(e) => setFormData({...formData, manager: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  onChange={(e) => handleInputChange('manager', e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 transition-colors ${
+                    fieldErrors.manager 
+                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                  }`}
                   placeholder="Enter manager name"
                 />
+                {fieldErrors.manager && (
+                  <div className="mt-1 flex items-center text-red-600 text-sm">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    <span>{fieldErrors.manager}</span>
+                  </div>
+                )}
               </div>
 
               <div className="flex space-x-3 pt-4">

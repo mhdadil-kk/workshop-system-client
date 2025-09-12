@@ -101,6 +101,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   // Customer operations
   const addCustomer = useCallback(async (customerData: Omit<Customer, '_id' | 'id' | 'uniqueCode' | 'createdAt' | 'updatedAt'>) => {
     try {
+      console.log('[DataContext] Adding customer with data:', customerData);
       const response = await customerAPI.create(customerData);
       if (response.data && response.data.success) {
         const transformedData = transformServerData(response.data.data);
@@ -116,6 +117,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const updateCustomer = useCallback(async (uniqueCode: string, customerData: Partial<Customer>) => {
     try {
+      console.log('[DataContext] Updating customer', uniqueCode, 'with data:', customerData);
       const response = await customerAPI.update(uniqueCode, customerData);
       if (response.data && response.data.success) {
         const transformedData = transformServerData(response.data.data);
@@ -147,6 +149,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   // Vehicle operations
   const addVehicle = useCallback(async (vehicleData: Omit<Vehicle, '_id' | 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
+      console.log('[DataContext] Adding vehicle with data:', vehicleData);
       const response = await vehicleAPI.create(vehicleData);
       if (response.data && response.data.success) {
         const transformedData = transformServerData(response.data.data);
@@ -193,6 +196,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   // Order operations
   const addOrder = useCallback(async (orderData: Omit<Order, '_id' | 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>) => {
     try {
+      console.log('[DataContext] Adding order with data:', orderData);
       const response = await orderAPI.create(orderData);
       if (response.data && response.data.success) {
         const transformedData = transformServerData(response.data.data);

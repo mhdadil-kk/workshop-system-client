@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Wrench, Eye, EyeOff, ArrowRight, Sparkles, Shield, AlertCircle } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Shield, Wrench, AlertCircle } from 'lucide-react';
 
 const Login: React.FC = () => {
   const { login } = useAuth();
@@ -62,52 +62,24 @@ const Login: React.FC = () => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-blue-900 to-purple-900 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse animation-delay-2000"></div>
-        <div className="absolute top-40 left-40 w-60 h-60 bg-indigo-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse animation-delay-4000"></div>
-      </div>
-      
-      {/* Floating particles */}
-      <div className="absolute inset-0">
-        {[...Array(20)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-2 h-2 bg-white rounded-full opacity-10 animate-float"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 5}s`,
-              animationDuration: `${3 + Math.random() * 4}s`
-            }}
-          />
-        ))}
-      </div>
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
 
       <div className="max-w-md w-full">
         {/* Logo and Title */}
         <div className="text-center mb-10">
           <div className="flex justify-center items-center mb-4">
-            <div className="relative">
-              <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-4 rounded-2xl shadow-2xl transform rotate-3 hover:rotate-6 transition-transform duration-300">
-                <Wrench className="h-10 w-10 text-white" />
-              </div>
-              <div className="absolute -top-1 -right-1">
-                <Sparkles className="h-6 w-6 text-yellow-400 animate-pulse" />
-              </div>
+            <div className="bg-blue-600 p-4 rounded-lg shadow-lg">
+              <Wrench className="h-10 w-10 text-white" />
             </div>
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-bold text-white mb-2">
             WorkShop Pro
           </h1>
-          <p className="text-blue-200 text-lg font-medium">Workshop Management System</p>
-          <div className="w-20 h-1 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full mx-auto mt-4"></div>
+          <p className="text-gray-300 text-lg font-medium">Workshop Management System</p>
         </div>
 
         {/* Login Form */}
-        <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl p-8 border border-white/20">
+        <div className="bg-white rounded-lg shadow-lg p-8 border border-gray-200">
           <div className="flex items-center justify-center mb-6">
             <Shield className="h-6 w-6 text-blue-600 mr-2" />
             <h2 className="text-xl font-semibold text-gray-800">Secure Login</h2>
@@ -206,22 +178,15 @@ const Login: React.FC = () => {
 
         {/* Footer */}
         <div className="text-center mt-8">
-          <p className="text-sm text-blue-200 font-medium">
-            Workshop Management System - MongoDB Atlas Authentication
+          <p className="text-sm text-gray-300 font-medium">
+            Workshop Management System
           </p>
-          <div className="flex items-center justify-center mt-4 space-x-4 text-xs text-blue-300">
-            <span className="flex items-center">
-              <div className="w-1 h-1 bg-blue-400 rounded-full mr-1"></div>
-              Secure
-            </span>
-            <span className="flex items-center">
-              <div className="w-1 h-1 bg-blue-400 rounded-full mr-1"></div>
-              Fast
-            </span>
-            <span className="flex items-center">
-              <div className="w-1 h-1 bg-blue-400 rounded-full mr-1"></div>
-              Reliable
-            </span>
+          <div className="flex items-center justify-center mt-4 space-x-4 text-xs text-gray-400">
+            <span>Secure</span>
+            <span>•</span>
+            <span>Fast</span>
+            <span>•</span>
+            <span>Reliable</span>
           </div>
         </div>
       </div>
