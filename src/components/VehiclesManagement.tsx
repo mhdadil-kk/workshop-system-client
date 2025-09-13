@@ -15,8 +15,7 @@ const VehiclesManagement: React.FC<any> = ({ navigate }) => {
     year: new Date().getFullYear(),
     color: '',
     engineNumber: '',
-    chassisNumber: '',
-    customerId: ''
+    chassisNumber: ''
   });
   const [error, setError] = useState<string>('');
   const [expandedVehicles, setExpandedVehicles] = useState<Set<string>>(new Set());
@@ -105,8 +104,7 @@ const VehiclesManagement: React.FC<any> = ({ navigate }) => {
       year: new Date().getFullYear(),
       color: '',
       engineNumber: '',
-      chassisNumber: '',
-      customerId: ''
+      chassisNumber: ''
     });
     setError('');
     setFieldErrors({});
@@ -123,8 +121,7 @@ const VehiclesManagement: React.FC<any> = ({ navigate }) => {
       year: vehicle.year || new Date().getFullYear(),
       color: vehicle.color || '',
       engineNumber: vehicle.engineNumber || '',
-      chassisNumber: vehicle.chassisNumber || '',
-      customerId: vehicle._id || ''
+      chassisNumber: vehicle.chassisNumber || ''
     });
     setShowModal(true);
   };
@@ -198,9 +195,10 @@ const VehiclesManagement: React.FC<any> = ({ navigate }) => {
 
       {/* Loading State */}
       {loading.vehicles && (
-        <div className="card p-8 text-center">
-          <div className="loading-spinner mx-auto mb-4"></div>
-          <p className="text-gray-500 text-sm">Loading vehicles...</p>
+        <div className="card p-12 text-center">
+          <div className="spinner w-12 h-12 mx-auto mb-6"></div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Vehicles</h3>
+          <p className="text-gray-500">Please wait while we fetch your vehicle data...</p>
         </div>
       )}
 
@@ -511,29 +509,6 @@ const VehiclesManagement: React.FC<any> = ({ navigate }) => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Customer {!editingVehicle && <span className="text-red-500">*</span>}
-                </label>
-                <select
-                  value={formData.customerId}
-                  onChange={(e) => handleInputChange('customerId', e.target.value)}
-                  className="input py-2 text-sm"
-                >
-                  <option value="">Select customer...</option>
-                  {customers.map((customer) => (
-                    <option key={customer._id} value={customer._id}>
-                      {customer.name} - {customer.mobile}
-                    </option>
-                  ))}
-                </select>
-                {fieldErrors.customerId && (
-                  <div className="mt-1 flex items-center text-red-600 text-xs">
-                    <AlertCircle className="h-3 w-3 mr-1" />
-                    <span>{fieldErrors.customerId}</span>
-                  </div>
-                )}
-              </div>
 
               <div className="flex gap-3 pt-4">
                 <button

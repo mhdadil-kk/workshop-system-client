@@ -175,8 +175,9 @@ const CustomersManagement: React.FC<any> = ({ navigate }) => {
       {/* Loading State */}
       {loading.customers && (
         <div className="card p-12 text-center">
-          <div className="loading-spinner mx-auto mb-6"></div>
-          <p className="text-gray-500 text-lg font-medium">Loading customers...</p>
+          <div className="spinner w-12 h-12 mx-auto mb-6"></div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Customers</h3>
+          <p className="text-gray-500">Please wait while we fetch your customer data...</p>
         </div>
       )}
 

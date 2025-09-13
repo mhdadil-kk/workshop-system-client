@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Eye, Calendar, User, Car, Wrench, ChevronDown, ChevronRight, X, Save, AlertCircle } from 'lucide-react';
 import { Order } from '../types';
 import { useData } from '../contexts/DataContext';
-import { 
-  type ServiceInput 
+import {
+  type ServiceInput
 } from '../utils/validation';
 import Toast from './Toast';
 
@@ -35,14 +35,14 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
   const [showAddOrderModal, setShowAddOrderModal] = useState(false);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-  
+
   // Add Order Modal State
   const [expandedSections, setExpandedSections] = useState({
     customer: true,
     vehicle: false,
     services: false
   });
-  
+
   // Independent modes and selections
   const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('existing');
   const [vehicleMode, setVehicleMode] = useState<'existing' | 'new'>('existing');
@@ -52,7 +52,7 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
   const [customerSuggestions, setCustomerSuggestions] = useState<any[]>([]);
   const [vehicleQuery, setVehicleQuery] = useState('');
   const [vehicleSuggestions, setVehicleSuggestions] = useState<any[]>([]);
-  
+
   const [newOrderData, setNewOrderData] = useState<NewOrderData>({
     customer: {
       name: '',
@@ -72,8 +72,8 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
     services: [],
     notes: ''
   });
-  
-  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+
+  const [backendErrors, setBackendErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Helper functions for Add Order Modal
@@ -93,8 +93,8 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
       }
     }));
     // Clear error when user starts typing
-    if (formErrors[`customer.${field}`]) {
-      setFormErrors(prev => ({ ...prev, [`customer.${field}`]: '' }));
+    if (backendErrors[`customer.${field}`]) {
+      setBackendErrors(prev => ({ ...prev, [`customer.${field}`]: '' }));
     }
   };
 
@@ -107,8 +107,8 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
       }
     }));
     // Clear error when user starts typing
-    if (formErrors[`vehicle.${field}`]) {
-      setFormErrors(prev => ({ ...prev, [`vehicle.${field}`]: '' }));
+    if (backendErrors[`vehicle.${field}`]) {
+      setBackendErrors(prev => ({ ...prev, [`vehicle.${field}`]: '' }));
     }
   };
 
@@ -122,7 +122,7 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
   const updateService = (index: number, field: keyof ServiceInput, value: string | number) => {
     setNewOrderData(prev => ({
       ...prev,
-      services: prev.services.map((service, i) => 
+      services: prev.services.map((service, i) =>
         i === index ? { ...service, [field]: field === 'amount' ? Number(value) : value } : service
       )
     }));
@@ -139,45 +139,11 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
     return newOrderData.services.reduce((sum, service) => sum + (service.amount || 0), 0);
   };
 
-  const validateForm = (): boolean => {
-    const errors: {[key: string]: string} = {};
-    if (customerMode === 'new') {
-      const name = newOrderData.customer.name.trim();
-      const mobile = newOrderData.customer.mobile.trim();
-      if (!name) errors['customer.name'] = 'Customer name is required';
-      if (!mobile) {
-        errors['customer.mobile'] = 'Mobile is required';
-      } else if (!/^\d{10,}$/.test(mobile)) {
-        errors['customer.mobile'] = 'Enter at least 10 digits';
-      }
-    } else {
-      if (!selectedCustomerId) errors['selectedCustomer'] = 'Please select a customer';
-    }
-    if (vehicleMode === 'new') {
-      if (!newOrderData.vehicle.vehicleNumber.trim()) errors['vehicle.vehicleNumber'] = 'Vehicle number is required';
-      if (!newOrderData.vehicle.make.trim()) errors['vehicle.make'] = 'Make is required';
-      if (!newOrderData.vehicle.vehicleModel.trim()) errors['vehicle.vehicleModel'] = 'Model is required';
-    } else {
-      if (!selectedVehicleId) errors['selectedVehicle'] = 'Please select a vehicle';
-    }
-    if (newOrderData.services.length === 0) {
-      errors['services'] = 'Add at least one service';
-    } else {
-      newOrderData.services.forEach((s, i) => {
-        if (!s.name.trim()) errors[`service.${i}.name`] = 'Service name is required';
-        if (!(typeof s.amount === 'number') || s.amount <= 0) errors[`service.${i}.amount`] = 'Amount must be greater than 0';
-      });
-    }
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
+  // Remove frontend validation - let backend handle all validation
 
   const handleSubmitOrder = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
     setIsSubmitting(true);
+    setBackendErrors({}); // Clear previous errors
     try {
       let customerId: string;
       let vehicleId: string;
@@ -211,42 +177,47 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
       }
 
       // Create order with backend-expected structure
-        await addOrder({
-          customerId,
-          vehicleId,
-          services: newOrderData.services.map(service => ({
-            name: service.name.trim(),
-            description: service.description?.trim() || undefined,
-            amount: service.amount
-          })),
-          notes: newOrderData.notes || undefined
-        } as any);
+      await addOrder({
+        customerId,
+        vehicleId,
+        services: newOrderData.services.map(service => ({
+          name: service.name.trim(),
+          description: service.description?.trim() || undefined,
+          amount: service.amount
+        })),
+        notes: newOrderData.notes || undefined
+      } as any);
 
       // Reset form and close modal
       resetForm();
       setShowAddOrderModal(false);
-      
+
       // Reload all data
       await Promise.all([loadOrders(), loadCustomers(), loadVehicles()]);
-      
+
       // Show success toast
       setToast({ message: 'Order created successfully!', type: 'success' });
     } catch (error: any) {
       console.error('Error creating order:', error);
-      
-      // Display backend error messages directly
-      let errorMessage = 'Failed to create order. Please try again.';
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.response?.data?.errors) {
-        // Handle validation errors
-        const errors = error.response.data.errors;
-        if (Array.isArray(errors) && errors.length > 0) {
-          errorMessage = errors.map(err => err.message).join(', ');
+
+      // Handle backend validation errors
+      if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+        const validationErrors: { [key: string]: string } = {};
+        error.response.data.errors.forEach((err: any) => {
+          if (err.field && err.message) {
+            validationErrors[err.field] = err.message;
+          }
+        });
+        setBackendErrors(validationErrors);
+        setToast({ message: 'Please fill out the form correctly', type: 'error' });
+      } else {
+        // Handle other errors
+        let errorMessage = 'Failed to create order. Please try again.';
+        if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
         }
+        setToast({ message: errorMessage, type: 'error' });
       }
-      
-      setToast({ message: errorMessage, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -281,7 +252,7 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
     setCustomerSuggestions([]);
     setVehicleSuggestions([]);
     setExpandedSections({ customer: true, vehicle: false, services: false });
-    setFormErrors({});
+    setBackendErrors({});
   };
 
   // Load data when component mounts
@@ -330,7 +301,7 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
   const filteredOrders = orders.filter(order => {
     const customer = customers.find(c => c._id === order.customerId);
     const vehicle = vehicles.find(v => v._id === order.vehicleId);
-    
+
     return (
       order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -394,7 +365,7 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
             </div>
           </div>
         </div>
-        <button 
+        <button
           onClick={() => setShowAddOrderModal(true)}
           className="btn btn-primary px-6 py-3 text-base font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
         >
@@ -437,104 +408,104 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
       {/* Orders List */}
       {!loading.orders && (
         <div className="space-y-4">
-        {filteredOrders.map((order, index) => {
-          const customer = customers.find(c => c._id === order.customerId);
-          const vehicle = vehicles.find(v => v._id === order.vehicleId);
-          const isExpanded = expandedOrders.has(order._id);
-          
-          return (
-            <div 
-              key={order._id} 
-              className="card overflow-hidden hover:shadow-xl transition-all duration-300 animate-slide-in border-l-4 border-l-blue-500"
-              style={{ animationDelay: `${index * 100}ms` }}
-            >
-              {/* Order Header */}
-              <div className="p-6 bg-gradient-to-r from-white to-gray-50/30">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="relative">
-                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl flex items-center justify-center shadow-md">
-                        <Wrench className="h-5 w-5 text-white" />
-                      </div>
-                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-lg font-bold text-gray-900">#{order.orderNumber}</h3>
-                        <div className="badge badge-success text-xs font-bold px-2 py-1">
-                          ${order.totalAmount.toFixed(2)}
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-4 text-sm">
-                        <div className="flex items-center space-x-2 text-gray-600">
-                          <div className="p-1 bg-blue-100 rounded-lg">
-                            <Calendar className="h-4 w-4 text-blue-600" />
-                          </div>
-                          <span className="font-medium">{new Date(order.createdAt).toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'short', 
-                            day: 'numeric' 
-                          })}</span>
-                        </div>
-                        <div className="flex items-center space-x-2 text-gray-600">
-                          <div className="p-1 bg-purple-100 rounded-lg">
-                            <Wrench className="h-4 w-4 text-purple-600" />
-                          </div>
-                          <span className="font-medium">{order.services.length} service{order.services.length !== 1 ? 's' : ''}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => {handleViewOrder(order)}}
-                      className="icon-btn icon-btn-primary p-3 hover:scale-110 transition-all duration-200"
-                      title="View Details"
-                    >
-                      <Eye size={18} />
-                    </button>
-                    {false && (
-                    <button
-                      onClick={() => {toggleOrderExpansion(order._id)}}
-                      className="icon-btn icon-btn-primary p-3 hover:scale-110 transition-all duration-200"
-                      title={isExpanded ? 'Collapse Details' : 'Expand Details'}
-                    >
-                      {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                    </button>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Quick Info Cards */}
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="group flex items-center space-x-4 p-4 bg-gradient-to-r from-blue-50 to-blue-100/50 rounded-xl border border-blue-200/50 hover:shadow-md transition-all duration-200">
-                    <div className="p-2 bg-blue-500 rounded-lg shadow-md group-hover:scale-110 transition-transform duration-200">
-                      <User className="h-4 w-4 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-bold text-gray-900 text-sm">{customer?.name || 'Unknown Customer'}</div>
-                      <div className="text-xs text-blue-700 font-medium">{customer?.mobile || 'No contact'}</div>
-                    </div>
-                  </div>
-                  <div className="group flex items-center space-x-4 p-4 bg-gradient-to-r from-green-50 to-green-100/50 rounded-xl border border-green-200/50 hover:shadow-md transition-all duration-200">
-                    <div className="p-2 bg-green-500 rounded-lg shadow-md group-hover:scale-110 transition-transform duration-200">
-                      <Car className="h-4 w-4 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-bold text-gray-900 text-sm">
-                        {vehicle ? `${vehicle.year || ''} ${vehicle.make} ${vehicle.vehicleModel}`.trim() : 'Unknown Vehicle'}
-                      </div>
-                      <div className="text-xs text-green-700 font-mono font-medium">{vehicle?.vehicleNumber || 'No registration'}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          {filteredOrders.map((order, index) => {
+            const customer = customers.find(c => c._id === order.customerId);
+            const vehicle = vehicles.find(v => v._id === order.vehicleId);
+            const isExpanded = expandedOrders.has(order._id);
 
-              {/* Expanded Details Section removed in favor of dedicated page */}
-            </div>
-          );
-        })}
+            return (
+              <div
+                key={order._id}
+                className="card overflow-hidden hover:shadow-xl transition-all duration-300 animate-slide-in border-l-4 border-l-blue-500"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                {/* Order Header */}
+                <div className="p-6 bg-gradient-to-r from-white to-gray-50/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="relative">
+                        <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl flex items-center justify-center shadow-md">
+                          <Wrench className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h3 className="text-lg font-bold text-gray-900">#{order.orderNumber}</h3>
+                          <div className="badge badge-success text-xs font-bold px-2 py-1">
+                            ${order.totalAmount.toFixed(2)}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-4 text-sm">
+                          <div className="flex items-center space-x-2 text-gray-600">
+                            <div className="p-1 bg-blue-100 rounded-lg">
+                              <Calendar className="h-4 w-4 text-blue-600" />
+                            </div>
+                            <span className="font-medium">{new Date(order.createdAt).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            })}</span>
+                          </div>
+                          <div className="flex items-center space-x-2 text-gray-600">
+                            <div className="p-1 bg-purple-100 rounded-lg">
+                              <Wrench className="h-4 w-4 text-purple-600" />
+                            </div>
+                            <span className="font-medium">{order.services.length} service{order.services.length !== 1 ? 's' : ''}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => { handleViewOrder(order) }}
+                        className="icon-btn icon-btn-primary p-3 hover:scale-110 transition-all duration-200"
+                        title="View Details"
+                      >
+                        <Eye size={18} />
+                      </button>
+                      {false && (
+                        <button
+                          onClick={() => { toggleOrderExpansion(order._id) }}
+                          className="icon-btn icon-btn-primary p-3 hover:scale-110 transition-all duration-200"
+                          title={isExpanded ? 'Collapse Details' : 'Expand Details'}
+                        >
+                          {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Quick Info Cards */}
+                  <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="group flex items-center space-x-4 p-4 bg-gradient-to-r from-blue-50 to-blue-100/50 rounded-xl border border-blue-200/50 hover:shadow-md transition-all duration-200">
+                      <div className="p-2 bg-blue-500 rounded-lg shadow-md group-hover:scale-110 transition-transform duration-200">
+                        <User className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-bold text-gray-900 text-sm">{customer?.name || 'Unknown Customer'}</div>
+                        <div className="text-xs text-blue-700 font-medium">{customer?.mobile || 'No contact'}</div>
+                      </div>
+                    </div>
+                    <div className="group flex items-center space-x-4 p-4 bg-gradient-to-r from-green-50 to-green-100/50 rounded-xl border border-green-200/50 hover:shadow-md transition-all duration-200">
+                      <div className="p-2 bg-green-500 rounded-lg shadow-md group-hover:scale-110 transition-transform duration-200">
+                        <Car className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-bold text-gray-900 text-sm">
+                          {vehicle ? `${vehicle.year || ''} ${vehicle.make} ${vehicle.vehicleModel}`.trim() : 'Unknown Vehicle'}
+                        </div>
+                        <div className="text-xs text-green-700 font-mono font-medium">{vehicle?.vehicleNumber || 'No registration'}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Expanded Details Section removed in favor of dedicated page */}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -548,7 +519,7 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
             {searchTerm ? 'Try adjusting your search terms or clear the search to see all orders.' : 'Ready to get started? Create your first order to begin managing workshop services.'}
           </p>
           {!searchTerm && (
-            <button 
+            <button
               onClick={() => setShowAddOrderModal(true)}
               className="btn btn-primary px-6 py-3 text-base font-semibold"
             >
@@ -580,7 +551,7 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="p-8 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
@@ -596,19 +567,19 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
                   })}</p>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="card p-4 bg-gradient-to-r from-blue-50 to-blue-100/50">
                   <label className="block text-sm font-bold text-blue-700 uppercase tracking-wide mb-2">Customer</label>
                   <p className="text-base font-bold text-gray-900">{getCustomerName(selectedOrder.customerId)}</p>
                 </div>
-                
+
                 <div className="card p-4 bg-gradient-to-r from-green-50 to-green-100/50">
                   <label className="block text-sm font-bold text-green-700 uppercase tracking-wide mb-2">Vehicle</label>
                   <p className="text-base font-bold text-gray-900">{getVehicleInfo(selectedOrder.vehicleId)}</p>
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide mb-4">Services Performed</label>
                 <div className="space-y-3">
@@ -625,7 +596,7 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
                   ))}
                 </div>
               </div>
-              
+
               {selectedOrder.notes && (
                 <div>
                   <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide mb-3">Additional Notes</label>
@@ -634,7 +605,7 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
                   </div>
                 </div>
               )}
-              
+
               <div className="border-t border-gray-300 pt-6 bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl">
                 <div className="flex justify-between items-center">
                   <span className="text-2xl font-bold text-gray-900">Total Amount:</span>
@@ -669,7 +640,7 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
             </div>
 
             <div className="p-8 space-y-8">
-              
+
 
               {/* Existing Customer/Vehicle Selection */}
               {false && (
@@ -680,10 +651,9 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
                     </label>
                     <select
                       value={''}
-                      onChange={() => {}}
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        formErrors['selectedCustomer'] ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      onChange={() => { }}
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors['selectedCustomer'] ? 'border-red-500' : 'border-gray-300'
+                        }`}
                     >
                       <option value="">Choose a customer...</option>
                       {customers.map(customer => (
@@ -706,10 +676,9 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
                     </label>
                     <select
                       value={''}
-                      onChange={() => {}}
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        formErrors['selectedVehicle'] ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      onChange={() => { }}
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors['selectedVehicle'] ? 'border-red-500' : 'border-gray-300'
+                        }`}
                     >
                       <option value="">Choose a vehicle...</option>
                       {vehicles.map(vehicle => (
@@ -741,146 +710,142 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
                     </div>
                     {expandedSections.customer ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
                   </button>
-                
-                {expandedSections.customer && (
-                  <div className="p-4 border-t border-gray-200 space-y-4">
-                    <div className="flex items-center gap-4">
-                      <label className="inline-flex items-center text-sm">
-                        <input type="radio" checked={customerMode === 'existing'} onChange={() => setCustomerMode('existing')} />
-                        <span className="ml-2">Existing</span>
-                      </label>
-                      <label className="inline-flex items-center text-sm">
-                        <input type="radio" checked={customerMode === 'new'} onChange={() => setCustomerMode('new')} />
-                        <span className="ml-2">New</span>
-                      </label>
-                    </div>
-                    {customerMode === 'existing' ? (
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Search by customer code</label>
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                          <input
-                            value={customerQuery}
-                            onChange={(e) => setCustomerQuery(e.target.value)}
-                            placeholder="Type to search..."
-                            className={`input pl-9 w-full ${formErrors['selectedCustomer'] ? 'border-red-500' : ''}`}
-                          />
-                          {customerSuggestions.length > 0 && (
-                            <div className="absolute left-0 right-0 mt-1 bg-white border rounded shadow z-30 max-h-56 overflow-auto">
-                              {customerSuggestions.map((c: any) => (
-                                <button
-                                  key={c._id}
-                                  type="button"
-                                  onClick={() => { setSelectedCustomerId(c._id); setCustomerQuery(''); setCustomerSuggestions([]); }}
-                                  className="w-full text-left px-3 py-2 hover:bg-gray-50"
-                                >
-                                  <div className="font-semibold">{c.uniqueCode}</div>
-                                  <div className="text-xs text-gray-600">{c.name}</div>
-                                </button>
-                              ))}
-                            </div>
+
+                  {expandedSections.customer && (
+                    <div className="p-4 border-t border-gray-200 space-y-4">
+                      <div className="flex items-center gap-4">
+                        <label className="inline-flex items-center text-sm">
+                          <input type="radio" checked={customerMode === 'existing'} onChange={() => setCustomerMode('existing')} />
+                          <span className="ml-2">Existing</span>
+                        </label>
+                        <label className="inline-flex items-center text-sm">
+                          <input type="radio" checked={customerMode === 'new'} onChange={() => setCustomerMode('new')} />
+                          <span className="ml-2">New</span>
+                        </label>
+                      </div>
+                      {customerMode === 'existing' ? (
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">Search by customer code</label>
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                            <input
+                              value={customerQuery}
+                              onChange={(e) => setCustomerQuery(e.target.value)}
+                              placeholder="Type to search..."
+                              className={`input pl-9 w-full ${backendErrors['customerId'] ? 'border-red-500' : ''}`}
+                            />
+                            {customerSuggestions.length > 0 && (
+                              <div className="absolute left-0 right-0 mt-1 bg-white border rounded shadow z-30 max-h-56 overflow-auto">
+                                {customerSuggestions.map((c: any) => (
+                                  <button
+                                    key={c._id}
+                                    type="button"
+                                    onClick={() => { setSelectedCustomerId(c._id); setCustomerQuery(''); setCustomerSuggestions([]); }}
+                                    className="w-full text-left px-3 py-2 hover:bg-gray-50"
+                                  >
+                                    <div className="font-semibold">{c.uniqueCode}</div>
+                                    <div className="text-xs text-gray-600">{c.name}</div>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <select
+                            value={selectedCustomerId}
+                            onChange={(e) => setSelectedCustomerId(e.target.value)}
+                            className={`input w-full ${backendErrors['customerId'] ? 'border-red-500' : ''}`}
+                          >
+                            <option value="">Or choose by code...</option>
+                            {customers.map(c => (
+                              <option key={c._id} value={c._id}>{c.uniqueCode} - {c.name}</option>
+                            ))}
+                          </select>
+                          {backendErrors['customerId'] && (
+                            <p className="text-red-500 text-sm mt-1 flex items-center"><AlertCircle size={16} className="mr-1" />{backendErrors['customerId']}</p>
                           )}
                         </div>
-                        <select
-                          value={selectedCustomerId}
-                          onChange={(e) => setSelectedCustomerId(e.target.value)}
-                          className={`input w-full ${formErrors['selectedCustomer'] ? 'border-red-500' : ''}`}
-                        >
-                          <option value="">Or choose by code...</option>
-                          {customers.map(c => (
-                            <option key={c._id} value={c._id}>{c.uniqueCode} - {c.name}</option>
-                          ))}
-                        </select>
-                        {formErrors['selectedCustomer'] && (
-                          <p className="text-red-500 text-sm mt-1 flex items-center"><AlertCircle size={16} className="mr-1" />{formErrors['selectedCustomer']}</p>
-                        )}
-                      </div>
-                    ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Customer Name <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={newOrderData.customer.name}
-                          onChange={(e) => updateCustomerData('name', e.target.value)}
-                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                            formErrors['customer.name'] ? 'border-red-500' : 'border-gray-300'
-                          }`}
-                          placeholder="Enter customer name"
-                        />
-                        {formErrors['customer.name'] && (
-                          <p className="text-red-500 text-sm mt-1 flex items-center">
-                            <AlertCircle size={16} className="mr-1" />
-                            {formErrors['customer.name']}
-                          </p>
-                        )}
-                      </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Customer Name <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={newOrderData.customer.name}
+                              onChange={(e) => updateCustomerData('name', e.target.value)}
+                              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${backendErrors['name'] ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                              placeholder="Enter customer name"
+                            />
+                            {backendErrors['name'] && (
+                              <p className="text-red-500 text-sm mt-1 flex items-center">
+                                <AlertCircle size={16} className="mr-1" />
+                                {backendErrors['name']}
+                              </p>
+                            )}
+                          </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Mobile Number <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="tel"
-                          value={newOrderData.customer.mobile}
-                          onChange={(e) => updateCustomerData('mobile', e.target.value)}
-                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                            formErrors['customer.mobile'] ? 'border-red-500' : 'border-gray-300'
-                          }`}
-                          placeholder="Enter mobile number"
-                        />
-                        {formErrors['customer.mobile'] && (
-                          <p className="text-red-500 text-sm mt-1 flex items-center">
-                            <AlertCircle size={16} className="mr-1" />
-                            {formErrors['customer.mobile']}
-                          </p>
-                        )}
-                      </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Mobile Number <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="tel"
+                              value={newOrderData.customer.mobile}
+                              onChange={(e) => updateCustomerData('mobile', e.target.value)}
+                              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${backendErrors['mobile'] ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                              placeholder="Enter mobile number"
+                            />
+                            {backendErrors['mobile'] && (
+                              <p className="text-red-500 text-sm mt-1 flex items-center">
+                                <AlertCircle size={16} className="mr-1" />
+                                {backendErrors['mobile']}
+                              </p>
+                            )}
+                          </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                        <input
-                          type="email"
-                          value={newOrderData.customer.email}
-                          onChange={(e) => updateCustomerData('email', e.target.value)}
-                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                            formErrors['customer.email'] ? 'border-red-500' : 'border-gray-300'
-                          }`}
-                          placeholder="Enter email address (optional)"
-                        />
-                        {formErrors['customer.email'] && (
-                          <p className="text-red-500 text-sm mt-1 flex items-center">
-                            <AlertCircle size={16} className="mr-1" />
-                            {formErrors['customer.email']}
-                          </p>
-                        )}
-                      </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                            <input
+                              type="email"
+                              value={newOrderData.customer.email}
+                              onChange={(e) => updateCustomerData('email', e.target.value)}
+                              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${backendErrors['email'] ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                              placeholder="Enter email address (optional)"
+                            />
+                            {backendErrors['email'] && (
+                              <p className="text-red-500 text-sm mt-1 flex items-center">
+                                <AlertCircle size={16} className="mr-1" />
+                                {backendErrors['email']}
+                              </p>
+                            )}
+                          </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                        <input
-                          type="text"
-                          value={newOrderData.customer.address}
-                          onChange={(e) => updateCustomerData('address', e.target.value)}
-                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                            formErrors['customer.address'] ? 'border-red-500' : 'border-gray-300'
-                          }`}
-                          placeholder="Enter address (optional)"
-                        />
-                        {formErrors['customer.address'] && (
-                          <p className="text-red-500 text-sm mt-1 flex items-center">
-                            <AlertCircle size={16} className="mr-1" />
-                            {formErrors['customer.address']}
-                          </p>
-                        )}
-                      </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                            <input
+                              type="text"
+                              value={newOrderData.customer.address}
+                              onChange={(e) => updateCustomerData('address', e.target.value)}
+                              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${backendErrors['address'] ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                              placeholder="Enter address (optional)"
+                            />
+                            {backendErrors['address'] && (
+                              <p className="text-red-500 text-sm mt-1 flex items-center">
+                                <AlertCircle size={16} className="mr-1" />
+                                {backendErrors['address']}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    )}
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
               )}
 
               {/* Vehicle Section */}
@@ -896,153 +861,150 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
                     </div>
                     {expandedSections.vehicle ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
                   </button>
-                
-                {expandedSections.vehicle && (
-                  <div className="p-4 border-t border-gray-200 space-y-4">
-                    <div className="flex items-center gap-4">
-                      <label className="inline-flex items-center text-sm"><input type="radio" checked={vehicleMode === 'existing'} onChange={() => setVehicleMode('existing')} /><span className="ml-2">Existing</span></label>
-                      <label className="inline-flex items-center text-sm"><input type="radio" checked={vehicleMode === 'new'} onChange={() => setVehicleMode('new')} /><span className="ml-2">New</span></label>
-                    </div>
-                    {vehicleMode === 'existing' ? (
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Search by vehicle number</label>
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                          <input value={vehicleQuery} onChange={(e) => setVehicleQuery(e.target.value)} placeholder="Type to search..." className={`input pl-9 w-full ${formErrors['selectedVehicle'] ? 'border-red-500' : ''}`} />
-                          {vehicleSuggestions.length > 0 && (
-                            <div className="absolute left-0 right-0 mt-1 bg-white border rounded shadow z-30 max-h-56 overflow-auto">
-                              {vehicleSuggestions.map((v: any) => (
-                                <button key={v._id} type="button" onClick={() => { setSelectedVehicleId(v._id); setVehicleQuery(''); setVehicleSuggestions([]); }} className="w-full text-left px-3 py-2 hover:bg-gray-50">
-                                  <div className="font-semibold">{v.vehicleNumber}</div>
-                                  <div className="text-xs text-gray-600">{v.make} {v.vehicleModel}</div>
-                                </button>
-                              ))}
-                            </div>
+
+                  {expandedSections.vehicle && (
+                    <div className="p-4 border-t border-gray-200 space-y-4">
+                      <div className="flex items-center gap-4">
+                        <label className="inline-flex items-center text-sm"><input type="radio" checked={vehicleMode === 'existing'} onChange={() => setVehicleMode('existing')} /><span className="ml-2">Existing</span></label>
+                        <label className="inline-flex items-center text-sm"><input type="radio" checked={vehicleMode === 'new'} onChange={() => setVehicleMode('new')} /><span className="ml-2">New</span></label>
+                      </div>
+                      {vehicleMode === 'existing' ? (
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">Search by vehicle number</label>
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                            <input value={vehicleQuery} onChange={(e) => setVehicleQuery(e.target.value)} placeholder="Type to search..." className={`input pl-9 w-full ${backendErrors['vehicleId'] ? 'border-red-500' : ''}`} />
+                            {vehicleSuggestions.length > 0 && (
+                              <div className="absolute left-0 right-0 mt-1 bg-white border rounded shadow z-30 max-h-56 overflow-auto">
+                                {vehicleSuggestions.map((v: any) => (
+                                  <button key={v._id} type="button" onClick={() => { setSelectedVehicleId(v._id); setVehicleQuery(''); setVehicleSuggestions([]); }} className="w-full text-left px-3 py-2 hover:bg-gray-50">
+                                    <div className="font-semibold">{v.vehicleNumber}</div>
+                                    <div className="text-xs text-gray-600">{v.make} {v.vehicleModel}</div>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <select value={selectedVehicleId} onChange={(e) => setSelectedVehicleId(e.target.value)} className={`input w-full ${backendErrors['vehicleId'] ? 'border-red-500' : ''}`}>
+                            <option value="">Or choose by number...</option>
+                            {vehicles.map(v => (<option key={v._id} value={v._id}>{v.vehicleNumber}</option>))}
+                          </select>
+                          {backendErrors['vehicleId'] && (
+                            <p className="text-red-500 text-sm mt-1 flex items-center"><AlertCircle size={16} className="mr-1" />{backendErrors['vehicleId']}</p>
                           )}
                         </div>
-                        <select value={selectedVehicleId} onChange={(e) => setSelectedVehicleId(e.target.value)} className={`input w-full ${formErrors['selectedVehicle'] ? 'border-red-500' : ''}`}>
-                          <option value="">Or choose by number...</option>
-                          {vehicles.map(v => (<option key={v._id} value={v._id}>{v.vehicleNumber}</option>))}
-                        </select>
-                        {formErrors['selectedVehicle'] && (
-                          <p className="text-red-500 text-sm mt-1 flex items-center"><AlertCircle size={16} className="mr-1" />{formErrors['selectedVehicle']}</p>
-                        )}
-                      </div>
-                    ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Vehicle Number <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={newOrderData.vehicle.vehicleNumber}
-                          onChange={(e) => updateVehicleData('vehicleNumber', e.target.value)}
-                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                            formErrors['vehicle.vehicleNumber'] ? 'border-red-500' : 'border-gray-300'
-                          }`}
-                          placeholder="Enter vehicle number"
-                        />
-                        {formErrors['vehicle.vehicleNumber'] && (
-                          <p className="text-red-500 text-sm mt-1 flex items-center">
-                            <AlertCircle size={16} className="mr-1" />
-                            {formErrors['vehicle.vehicleNumber']}
-                          </p>
-                        )}
-                      </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Vehicle Number <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={newOrderData.vehicle.vehicleNumber}
+                              onChange={(e) => updateVehicleData('vehicleNumber', e.target.value)}
+                              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${backendErrors['vehicleNumber'] ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                              placeholder="Enter vehicle number"
+                            />
+                            {backendErrors['vehicleNumber'] && (
+                              <p className="text-red-500 text-sm mt-1 flex items-center">
+                                <AlertCircle size={16} className="mr-1" />
+                                {backendErrors['vehicleNumber']}
+                              </p>
+                            )}
+                          </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Make <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={newOrderData.vehicle.make}
-                          onChange={(e) => updateVehicleData('make', e.target.value)}
-                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                            formErrors['vehicle.make'] ? 'border-red-500' : 'border-gray-300'
-                          }`}
-                          placeholder="Enter vehicle make"
-                        />
-                        {formErrors['vehicle.make'] && (
-                          <p className="text-red-500 text-sm mt-1 flex items-center">
-                            <AlertCircle size={16} className="mr-1" />
-                            {formErrors['vehicle.make']}
-                          </p>
-                        )}
-                      </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Make <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={newOrderData.vehicle.make}
+                              onChange={(e) => updateVehicleData('make', e.target.value)}
+                              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${backendErrors['make'] ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                              placeholder="Enter vehicle make"
+                            />
+                            {backendErrors['make'] && (
+                              <p className="text-red-500 text-sm mt-1 flex items-center">
+                                <AlertCircle size={16} className="mr-1" />
+                                {backendErrors['make']}
+                              </p>
+                            )}
+                          </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Model <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={newOrderData.vehicle.vehicleModel}
-                          onChange={(e) => updateVehicleData('vehicleModel', e.target.value)}
-                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                            formErrors['vehicle.vehicleModel'] ? 'border-red-500' : 'border-gray-300'
-                          }`}
-                          placeholder="Enter vehicle model"
-                        />
-                        {formErrors['vehicle.vehicleModel'] && (
-                          <p className="text-red-500 text-sm mt-1 flex items-center">
-                            <AlertCircle size={16} className="mr-1" />
-                            {formErrors['vehicle.vehicleModel']}
-                          </p>
-                        )}
-                      </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Model <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={newOrderData.vehicle.vehicleModel}
+                              onChange={(e) => updateVehicleData('vehicleModel', e.target.value)}
+                              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${backendErrors['vehicleModel'] ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                              placeholder="Enter vehicle model"
+                            />
+                            {backendErrors['vehicleModel'] && (
+                              <p className="text-red-500 text-sm mt-1 flex items-center">
+                                <AlertCircle size={16} className="mr-1" />
+                                {backendErrors['vehicleModel']}
+                              </p>
+                            )}
+                          </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
-                        <input
-                          type="number"
-                          value={newOrderData.vehicle.year || ''}
-                          onChange={(e) => updateVehicleData('year', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Enter year (optional)"
-                          min="1900"
-                          max={new Date().getFullYear() + 1}
-                        />
-                      </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
+                            <input
+                              type="number"
+                              value={newOrderData.vehicle.year || ''}
+                              onChange={(e) => updateVehicleData('year', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter year (optional)"
+                              min="1900"
+                              max={new Date().getFullYear() + 1}
+                            />
+                          </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
-                        <input
-                          type="text"
-                          value={newOrderData.vehicle.color}
-                          onChange={(e) => updateVehicleData('color', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Enter color (optional)"
-                        />
-                      </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
+                            <input
+                              type="text"
+                              value={newOrderData.vehicle.color}
+                              onChange={(e) => updateVehicleData('color', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter color (optional)"
+                            />
+                          </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Engine Number</label>
-                        <input
-                          type="text"
-                          value={newOrderData.vehicle.engineNumber}
-                          onChange={(e) => updateVehicleData('engineNumber', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Enter engine number (optional)"
-                        />
-                      </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Engine Number</label>
+                            <input
+                              type="text"
+                              value={newOrderData.vehicle.engineNumber}
+                              onChange={(e) => updateVehicleData('engineNumber', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter engine number (optional)"
+                            />
+                          </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Chassis Number</label>
-                        <input
-                          type="text"
-                          value={newOrderData.vehicle.chassisNumber}
-                          onChange={(e) => updateVehicleData('chassisNumber', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Enter chassis number (optional)"
-                        />
-                      </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Chassis Number</label>
+                            <input
+                              type="text"
+                              value={newOrderData.vehicle.chassisNumber}
+                              onChange={(e) => updateVehicleData('chassisNumber', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter chassis number (optional)"
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    )}
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
               )}
 
               {/* Service Details Accordion */}
@@ -1057,7 +1019,7 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
                   </div>
                   {expandedSections.services ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
                 </button>
-                
+
                 {expandedSections.services && (
                   <div className="p-4 border-t border-gray-200 space-y-4">
                     <div className="flex items-center justify-between">
@@ -1071,10 +1033,10 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
                       </button>
                     </div>
 
-                    {formErrors['services'] && (
+                    {backendErrors['services'] && (
                       <p className="text-red-500 text-sm flex items-center">
                         <AlertCircle size={16} className="mr-1" />
-                        {formErrors['services']}
+                        {backendErrors['services']}
                       </p>
                     )}
 
@@ -1084,13 +1046,13 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
                           <div className="flex items-center justify-between mb-3">
                             <h5 className="font-medium text-gray-900">Service {index + 1}</h5>
                             <button
-                              onClick={() => {removeService(index)}}
+                              onClick={() => { removeService(index) }}
                               className="text-red-600 hover:text-red-800"
                             >
                               <X size={18} />
                             </button>
                           </div>
-                          
+
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1100,15 +1062,14 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
                                 type="text"
                                 value={service.name}
                                 onChange={(e) => updateService(index, 'name', e.target.value)}
-                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                  formErrors[`service.${index}.name`] ? 'border-red-500' : 'border-gray-300'
-                                }`}
+                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${backendErrors[`services.${index}.name`] ? 'border-red-500' : 'border-gray-300'
+                                  }`}
                                 placeholder="Enter service name"
                               />
-                              {formErrors[`service.${index}.name`] && (
+                              {backendErrors[`services.${index}.name`] && (
                                 <p className="text-red-500 text-sm mt-1 flex items-center">
                                   <AlertCircle size={14} className="mr-1" />
-                                  {formErrors[`service.${index}.name`]}
+                                  {backendErrors[`services.${index}.name`]}
                                 </p>
                               )}
                             </div>
@@ -1132,17 +1093,16 @@ const OrdersManagement: React.FC<any> = ({ navigate }) => {
                                 type="number"
                                 value={service.amount}
                                 onChange={(e) => updateService(index, 'amount', e.target.value)}
-                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                  formErrors[`service.${index}.amount`] ? 'border-red-500' : 'border-gray-300'
-                                }`}
+                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${backendErrors[`services.${index}.amount`] ? 'border-red-500' : 'border-gray-300'
+                                  }`}
                                 placeholder="Enter amount"
                                 min="0"
                                 step="0.01"
                               />
-                              {formErrors[`service.${index}.amount`] && (
+                              {backendErrors[`services.${index}.amount`] && (
                                 <p className="text-red-500 text-sm mt-1 flex items-center">
                                   <AlertCircle size={14} className="mr-1" />
-                                  {formErrors[`service.${index}.amount`]}
+                                  {backendErrors[`services.${index}.amount`]}
                                 </p>
                               )}
                             </div>
